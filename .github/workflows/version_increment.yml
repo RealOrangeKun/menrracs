@@ -12,9 +12,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Install dependencies
-        run: npm install  # or yarn install
-
       - name: Increment version
         run: npm version patch  # or any other appropriate version bump (e.g., minor, major)
 
