@@ -11,19 +11,21 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+
       - name: Configure Git
         run: |
-            git config --global user.email "amazingritro66@gmail.com"
-            git config --global user.name "RealOrangeKun"
-      - name: Debug - Print package.json before version increment
-        run: cat package.json
+          git config --global user.email "amazingritro66@gmail.com"
+          git config --global user.name "RealOrangeKun"
+
       - name: Increment version
         run: npm version patch
-      - name: Increment version
-        run: npm version patch
-      - name: Debug - Print package.json after version increment
-        run: cat package.json
+
       - name: Commit version increment
         run: |
-          git commit -am "CI: Version bump"
-          git push
+          git add package.json
+          git commit -m "CI: Version bump"
+      
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
