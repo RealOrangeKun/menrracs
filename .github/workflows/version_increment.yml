@@ -1,0 +1,26 @@
+name: Increment Version on Main Push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  increment_version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: npm install  # or yarn install
+
+      - name: Increment version
+        run: npm version patch  # or any other appropriate version bump (e.g., minor, major)
+
+      - name: Commit version increment
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git commit -am "CI: Version bump"
+          git push
