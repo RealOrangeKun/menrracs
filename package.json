@@ -5,7 +5,11 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon src/app.mjs"
+    "start:dev": "nodemon src/app.mjs",
+    "push-new-version-minor-main": "npm version minor & git add . & git commit & git push origin main",
+    "push-new-version-major-main": "npm version major & git add . & git commit & git push origin main",
+    "push-new-version-minor-branch": "npm version minor & git add . & git commit & git push",
+    "push-new-version-major-branch": "npm version major & git add . & git commit & git push"
   },
   "author": "Youssef Tarek",
   "license": "ISC",
