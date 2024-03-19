@@ -1,130 +1,231 @@
+// Import necessary modules and functions
 import { verify, login, logout, checkLoggedIn, register } from "../controllers/auth.controller.mjs";
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcrypt';
 import hashPassword from "../controllers/crypt.mjs";
 import User from "../models/user.schema.mjs";
+
+// Mocking user schema, crypt module, and bcrypt library for testing
 jest.mock('../models/user.schema', () => ({
     __esModule: true,
     default: {
         findOne: jest.fn(),
         create: jest.fn()
     }
-}))
+}));
 jest.mock('../controllers/crypt', () => ({
     __esModule: true,
     default: jest.fn()
-}))
+}));
 jest.mock('bcrypt', () => ({
     compareSync: jest.fn()
-}))
+}));
 
+// Describe block for register tests
 describe('register tests', () => {
-    it('successfull register', async () => {
+    // Test case for successful registration
+    it('successful register', async () => {
+        // Mock request and response objects
         const req = {
-            user: null, body: {
+            user: null,
+            body: {
                 username: 'test',
                 password: 'testpwd',
                 email: 'test@example.com'
             }
-        }, res = {
+        };
+        const res = {
+            // Mock response methods
             status: jest.fn(() => res),
             send: jest.fn(() => res),
             json: jest.fn()
-        }
-        await register(req, res)
-        expect(hashPassword).toHaveBeenCalled()
-        expect(User.create).toHaveBeenCalledWith(req.body)
-        expect(res.status).toHaveBeenCalledWith(201)
-    })
-    it('failed resgisteration when user already logged in', async () => {
+        };
+
+        // Call register function with mock request and response
+        await register(req, res);
+
+        // Expectations for function calls and responses
+        expect(hashPassword).toHaveBeenCalled();
+        expect(User.create).toHaveBeenCalledWith(req.body);
+        expect(res.status).toHaveBeenCalledWith(201);
+    });
+
+    // Test case for failed registration when user is already logged in
+    it('failed registration when user already logged in', async () => {
+        // Mock request and response objects with user already logged in
         const req = {
             user: {
                 username: 'test',
                 password: 'testpwd',
                 email: 'test@example.com'
-            }, body: {
+            },
+            body: {
                 username: 'test',
                 password: 'testpwd',
                 email: 'test@example.com'
             }
-        }, res = {
+        };
+        const res = {
+            // Mock response methods
             status: jest.fn(() => res),
             send: jest.fn(() => res),
             json: jest.fn()
-        }
-        await register(req, res)
-        expect(hashPassword).not.toHaveBeenCalled()
-    }),
-        it('failed registeration when user already exists in database', async () => {
-            const req = {
-                user: null, body: {
-                    username: 'test',
-                    password: 'testpwd',
-                    email: 'test@example.com'
-                }
-            }, res = {
-                status: jest.fn(() => res),
-                send: jest.fn(() => res),
-                json: jest.fn()
+        };
+
+        // Call register function with mock request and response
+        await register(req, res);
+
+        // Expectation for hashPassword function not being called
+        expect(hashPassword).not.toHaveBeenCalled();
+    });
+
+    // Test case for failed registration when user already exists in database
+    it('failed registration when user already exists in database', async () => {
+        // Mock request and response objects
+        const req = {
+            user: null,
+            body: {
+                username: 'test',
+                password: 'testpwd',
+                email: 'test@example.com'
             }
-            const findOneSpy = jest.spyOn(User, 'findOne')
-            findOneSpy.mockReturnValue(req.body)
-            await register(req, res)
-            expect(hashPassword).toHaveBeenCalled()
-            expect(res.status).toHaveBeenCalledWith(400)
-        })
-})
+        };
+        const res = {
+            // Mock response methods
+            status: jest.fn(() => res),
+            send: jest.fn(() => res),
+            json: jest.fn()
+        };
 
+        // Spy on findOne method of User schema
+        const findOneSpy = jest.spyOn(User, 'findOne');
+        findOneSpy.mockReturnValue(req.body);
 
+        // Call register function with mock request and response
+        await register(req, res);
+
+        // Expectations for function calls and responses
+        expect(hashPassword).toHaveBeenCalled();
+        expect(res.status).toHaveBeenCalledWith(400);
+    });
+});
+
+// Describe block for verify tests
 describe('verify tests', () => {
-    it('successfull verify test', async () => {
-        const username = 'test', password = 'testpwd', done = jest.fn((error, user) => user)
-        const findOneSpy = jest.spyOn(User, 'findOne'), compareSyncSpy = jest.spyOn(bcrypt, 'compareSync')
-        compareSyncSpy.mockReturnValue(true)
-        findOneSpy.mockReturnValue({ username: username, password: password })
-        await verify(username, password, done)
-        expect(done).toHaveBeenCalledWith(null, { username, password })
-    }),
-        it('failed verify user doesnt exist test', async () => {
-            const username = 'test', password = 'testpwd', done = jest.fn((error, user) => user), findOneSpy = jest.spyOn(User, 'findOne')
-            findOneSpy.mockReturnValue(null)
-            await verify(username, password, done)
-            expect(done).toHaveBeenCalledWith(new Error("User not found"), null)
-        }),
-        it('failed very wrong password test', async () => {
-            const username = 'test', password = 'testpwd', done = jest.fn((error, user) => user),
-                findOneSpy = jest.spyOn(User, 'findOne'), compareSyncSpy = jest.spyOn(bcrypt, 'compareSync');
-            compareSyncSpy.mockReturnValue(false)
-            findOneSpy.mockReturnValue({ username: username, password: password })
-            await verify(username, password, done)
-            expect(done).toHaveBeenCalledWith(new Error("Password is incorrect"), null)
-        })
+    // Test case for successful verification
+    it('successful verify test', async () => {
+        // Mock username, password, and done function
+        const username = 'test';
+        const password = 'testpwd';
+        const done = jest.fn((error, user) => user);
 
-})
+        // Spy on findOne method of User schema and compareSync method of bcrypt
+        const findOneSpy = jest.spyOn(User, 'findOne');
+        const compareSyncSpy = jest.spyOn(bcrypt, 'compareSync');
+        compareSyncSpy.mockReturnValue(true);
+        findOneSpy.mockReturnValue({ username: username, password: password });
 
+        // Call verify function with mock arguments
+        await verify(username, password, done);
+
+        // Expectation for done function being called with user object
+        expect(done).toHaveBeenCalledWith(null, { username, password });
+    });
+
+    // Test case for failed verification when user doesn't exist
+    it('failed verify user doesnt exist test', async () => {
+        // Mock username, password, and done function
+        const username = 'test';
+        const password = 'testpwd';
+        const done = jest.fn((error, user) => user);
+
+        // Spy on findOne method of User schema
+        const findOneSpy = jest.spyOn(User, 'findOne');
+        findOneSpy.mockReturnValue(null);
+
+        // Call verify function with mock arguments
+        await verify(username, password, done);
+
+        // Expectation for done function being called with error
+        expect(done).toHaveBeenCalledWith(new Error("User not found"), null);
+    });
+
+    // Test case for failed verification when password is incorrect
+    it('failed verify wrong password test', async () => {
+        // Mock username, password, and done function
+        const username = 'test';
+        const password = 'testpwd';
+        const done = jest.fn((error, user) => user)
+        // Spy on findOne method of User schema and compareSync method of bcrypt
+        const findOneSpy = jest.spyOn(User, 'findOne');
+        const compareSyncSpy = jest.spyOn(bcrypt, 'compareSync');
+        compareSyncSpy.mockReturnValue(false);
+        findOneSpy.mockReturnValue({ username: username, password: password });
+
+        // Call verify function with mock arguments
+        await verify(username, password, done);
+
+        // Expectation for done function being called with error
+        expect(done).toHaveBeenCalledWith(new Error("Password is incorrect"), null);
+    });
+});
+
+// Describe block for checking if user already logged in tests
 describe('checking if user already logged in tests', () => {
+    // Test case for user already logged in
     it('user is already logged in test', () => {
-        const req = { user: { test: 'test' } }, res = { status: jest.fn(() => res), json: jest.fn() }
-        checkLoggedIn(req, res)
-        expect(res.status).toHaveBeenCalledWith(403)
-    }),
-        it('user is not logged in test', () => {
-            const req = { user: null }, res = {}, next = jest.fn()
-            checkLoggedIn(req, res, next)
-            expect(next).toHaveBeenCalled()
-        })
-})
+        // Mock request object with user already logged in and empty response object
+        const req = { user: { test: 'test' } };
+        const res = { status: jest.fn(() => res), json: jest.fn() };
 
+        // Call checkLoggedIn function with mock request and response
+        checkLoggedIn(req, res);
+
+        // Expectation for status method being called with status code 403
+        expect(res.status).toHaveBeenCalledWith(403);
+    });
+
+    // Test case for user not logged in
+    it('user is not logged in test', () => {
+        // Mock request object with user not logged in and empty response object
+        const req = { user: null };
+        const res = {};
+        const next = jest.fn();
+
+        // Call checkLoggedIn function with mock request, response, and next
+        checkLoggedIn(req, res, next);
+
+        // Expectation for next function being called
+        expect(next).toHaveBeenCalled();
+    });
+});
+
+// Describe block for logout tests
 describe('logout tests', () => {
-    it('logout successfull test', () => {
-        const req = { user: { test: 'test' }, logout: jest.fn(), session: { destroy: jest.fn() } }, res = { status: jest.fn(() => res), json: jest.fn(), sendStatus: jest.fn() }
-        logout(req, res)
-        expect(req.logout).toHaveBeenCalled()
-        expect(res.status).not.toHaveBeenCalledWith(401)
-    }),
-        it('logout failed test', () => {
-            const req = { user: null, logout: jest.fn(), session: { destroy: jest.fn() } }, res = { status: jest.fn(() => res), json: jest.fn(), sendStatus: jest.fn() }
-            logout(req, res)
-            expect(req.logout).not.toHaveBeenCalled()
-            expect(res.status).toHaveBeenCalledWith(401)
-        })
-})
+    // Test case for successful logout
+    it('logout successful test', () => {
+        // Mock request object with user logged in, and response and session objects with mock methods
+        const req = { user: { test: 'test' }, logout: jest.fn(), session: { destroy: jest.fn() } };
+        const res = { status: jest.fn(() => res), json: jest.fn(), sendStatus: jest.fn() };
+
+        // Call logout function with mock request and response
+        logout(req, res);
+
+        // Expectations for logout and status methods not being called with status code 401
+        expect(req.logout).toHaveBeenCalled();
+        expect(res.status).not.toHaveBeenCalledWith(401);
+    });
+
+    // Test case for failed logout
+    it('logout failed test', () => {
+        // Mock request object with user not logged in, and response and session objects with mock methods
+        const req = { user: null, logout: jest.fn(), session: { destroy: jest.fn() } };
+        const res = { status: jest.fn(() => res), json: jest.fn(), sendStatus: jest.fn() };
+
+        // Call logout function with mock request and response
+        logout(req, res);
+
+        // Expectations for logout not being called and status method being called with status code 401
+        expect(req.logout).not.toHaveBeenCalled();
+        expect(res.status).toHaveBeenCalledWith(401);
+    });
+});
