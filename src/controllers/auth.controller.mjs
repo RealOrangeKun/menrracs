@@ -61,25 +61,50 @@ const login = async (req, res) => {
     res.status(200).json({ success: true, message: 'Logged in' });
 };
 
-
+/**
+ * @description Verify function
+ * 
+ * The callback function for the local strategy of the `passport-local`.
+ * 
+ * The function verifies the user by their username and password it checks if the username exists in the Database and if
+ * their password is correct if they are then it calls the `done` function with 2 params `null` for the error and `user` for the user param
+ * 
+ * If it found any kind of error it calls the `done` function with the error in the error param and `null` for the user
+ *
+ * @async
+ * @param {String} username
+ * @param {String} password
+ * @param {Function} done
+ * @returns {Object}
+ */
 const verify = async (username, password, done) => {
     try {
         // Find user by username in the database
         const user = await User.findOne({ username });
-        if (!user) throw new Error("User not found");
+        if (!user) return done()
 
         // Compare hashed password with provided password
-        if (!bcrypt.compareSync(password, user.password)) throw new Error("Password is incorrect");
+        if (!bcrypt.compareSync(password, user.password)) return done();
 
         // Call done callback with user object if authentication is successful
         done(null, user);
     } catch (error) {
         // Call done callback with error if authentication fails
-        done(error, null);
+        done(error.message);
     }
 };
 
-// Middleware to check if user is already logged in
+/**
+ * @description Middleware to check if the user is logged in or not
+ * 
+ * It checks if the `req.user` property exists in the `req` object if it does not then it calls the `next` function
+ * if it does then it throws an error and send a status of `403` to the user.
+ * 
+ * 
+ * @param {import('express').Request} req 
+ * @param {import('express').Response} res 
+ * @param {Function} next 
+ */
 const checkLoggedIn = (req, res, next) => {
     try {
         // If user is already logged in, throw error
@@ -93,7 +118,16 @@ const checkLoggedIn = (req, res, next) => {
     }
 };
 
-// Function to handle user logout
+/**
+ * @description Logout function
+ * 
+ * The function which logs the user out, it starts by checking if the `req.user` exists if it does then it uses `req.logout`
+ * to log him out and then uses `req.session.destroy` to delete the sessions from the Database
+ * 
+ * 
+ * @param {import('express').Request} req 
+ * @param {import('express').Response} res 
+ */
 const logout = (req, res) => {
     // Check if user is logged in
     req.user ? req.logout(err => {
@@ -106,6 +140,37 @@ const logout = (req, res) => {
             res.status(200).json({ success: true, message: "User logged out successfully" }))
     }) : res.status(401).json({ success: false, message: "User not logged in" });
 };
+/**
+ * @description Logged in function
+ * 
+ * The function which checks if the user is authorized by using `req.isAuthenticated` if its true
+ * then it calls the `next()` function if its not then it throws an error
+ * 
+ * 
+ * @param {import('express').Request} req 
+ * @param {import('express').Response} res 
+ */
+const loggedIn = (req, res, next) => {
+    try {
+        if (req.isAuthenticated()) next();
+        else throw new Error("User is not authenticated");
+    } catch (error) {
+        res.status(401).json({ success: false, message: error.message });
+    }
 
+
+}
+/**
+ * @description 
+ * 
+ * Function which is called after passport.authenticate fails
+ * 
+ * 
+ * @param {import('express').Request} req 
+ * @param {import('express').Response} res 
+ */
+const incorrectCredentials = (req, res) => {
+    res.status(401).json({ success: false, error: "Incorrect username or password" })
+}
 // Export the functions for use in other modules
-export { register, login, verify, checkLoggedIn, logout };
+export { register, login, verify, checkLoggedIn, logout, loggedIn, incorrectCredentials };

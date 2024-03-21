@@ -6,6 +6,9 @@
 // Express.js framework for building web applications
 import express from "express";
 
+// HTTPS module for creating HTTPS servers
+import https from 'https';
+
 // Load environment variables from .env file
 import { config } from "dotenv";
 
@@ -24,8 +27,14 @@ import mongoose from "mongoose";
 // Parse cookies in request headers
 import cookieParser from "cookie-parser";
 
+// File system module for reading files
+import { readFileSync } from "fs";
+
 // Router for authentication routes
 import authRouter from './routes/auth.mjs';
+import filesRouter from './routes/file.mjs'
+import { checkLoggedIn, loggedIn } from "./controllers/auth.controller.mjs";
+
 
 // Load environment variables from .env file
 config();
@@ -34,18 +43,25 @@ config();
 const app = express();
 
 // Connect to MongoDB database
-mongoose.connect(process.env.DB)
+mongoose.connect(process.env.DB || 'mongodb://localhost:27017/menracs')
     .then(() => {
         console.log("Connected to DB!");
-        // Start the server once connected to the database
-        app.listen(process.env.PORT || 5000, () => {
-            console.log('Listening on port: ' + process.env.PORT);
-        });
+        // Create HTTPS server
+        const sslServer = https.createServer({
+            // Read SSL certificate key and certificate files
+            key: readFileSync(process.env.KEY_PATH),
+            cert: readFileSync(process.env.CERT_PATH)
+        }, app)
+        // Start HTTPS server
+        sslServer.listen(process.env.PORT || 5000, () => console.log('Listening'))
     })
     .catch(err => console.log(err.message));
 
 // Middleware to parse JSON request bodies
 app.use(express.json());
+
+// Middleware to parse URL Encoded request bodies
+app.use(express.urlencoded({ extended: true }))
 
 // Middleware to parse cookies
 app.use(cookieParser(process.env.SECRET_KEY));
@@ -58,14 +74,15 @@ app.use(session({
     resave: false,
     // Save new sessions that have not been modified
     saveUninitialized: true,
-    // Session duration in milliseconds (30 minutes)
+    // Session duration in milliseconds (2 Weeks)
     cookie: {
-        maxAge: 30 * 60 * 1000,
+        maxAge: 2 * 7 * 24 * 60 * 60 * 1000,
     },
     // MongoDB connection client and collection to store sessions
     store: MongoStore.create({
         client: mongoose.connection.getClient(),
-        collectionName: 'sessions'
+        collectionName: 'sessions',
+        touchAfter: 24 * 3600
     })
 }));
 
@@ -78,9 +95,17 @@ app.use(passport.session());
 // Mount authentication router at /api/auth
 app.use('/api/auth', authRouter);
 
-// Endpoint to check server status
-app.get('/api/status', (req, res) => {
-    console.log(req.sessionID);
-    // Send a response with status 200
-    res.sendStatus(200);
+// Mount file handling router at /api/files
+app.use('/api/files', loggedIn, filesRouter)
+
+// Middleware to handle 404 errors
+app.all('*', (req, res) => {
+    // Set the HTTP status code to 404
+    res.status(404).json({
+        error: 'Not Found',
+        message: 'Oops! Looks like the page you are looking for does not exist.'
+    });
 });
+
+
+
