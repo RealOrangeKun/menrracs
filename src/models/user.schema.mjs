@@ -1,5 +1,7 @@
 // Import necessary modules from mongoose
 import { model, Schema } from 'mongoose';
+import { fileSchema } from './file.schema.mjs';
+
 
 // Define the schema for the user collection
 const userSchema = new Schema({
@@ -35,7 +37,7 @@ const userSchema = new Schema({
             message: 'Email is already taken'
         },
         // Validate email format using regex, with custom error message
-        match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please enter a valid email address.']
+        match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please enter a valid email address.'],
     },
     // Define schema for the password field
     password: {
@@ -56,6 +58,10 @@ const userSchema = new Schema({
             // Error message for password validation failure
             message: 'Password must contain at least one uppercase letter, one lowercase letter, and one number.'
         }
+    },
+    files: {
+        type: [fileSchema],
+        default: []
     }
 }, {
     // Enable timestamps for created and updated fields

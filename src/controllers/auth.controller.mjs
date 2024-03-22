@@ -136,9 +136,9 @@ const logout = (req, res) => {
             return res.sendStatus(500);
         }
         // Destroy session and return success response if logout is successful
-        req.session.destroy(err => err ? res.status(500).json({ success: false, message: 'Failed to logout due to server error' }) :
+        req.session.destroy(err => err ? res.status(500).json({ success: false, error: 'Failed to logout due to server error' }) :
             res.status(200).json({ success: true, message: "User logged out successfully" }))
-    }) : res.status(401).json({ success: false, message: "User not logged in" });
+    }) : res.status(401).json({ success: false, error: "User not logged in" });
 };
 /**
  * @description Logged in function
@@ -151,14 +151,8 @@ const logout = (req, res) => {
  * @param {import('express').Response} res 
  */
 const loggedIn = (req, res, next) => {
-    try {
-        if (req.isAuthenticated()) next();
-        else throw new Error("User is not authenticated");
-    } catch (error) {
-        res.status(401).json({ success: false, message: error.message });
-    }
-
-
+    if (req.user) return next();
+    res.status(401).json({ success: false, error: "User is not authorized" });
 }
 /**
  * @description 

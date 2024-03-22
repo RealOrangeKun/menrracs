@@ -21,10 +21,11 @@ passport.deserializeUser(async (id, done) => {
         // Check if the user exists in the DB
         const user = await User.findById(id);
         // If not then throw an error
-        if (!user) throw new Error("User not found");
+        if (!user) return done();
         done(null, user);
     } catch (error) {
-        done(error, null);
+        console.log(error.message);
+        done();
     }
 });
 

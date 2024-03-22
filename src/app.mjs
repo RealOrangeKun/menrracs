@@ -32,8 +32,9 @@ import { readFileSync } from "fs";
 
 // Router for authentication routes
 import authRouter from './routes/auth.mjs';
-import filesRouter from './routes/file.mjs'
+import filesRouter from './routes/files.mjs'
 import { checkLoggedIn, loggedIn } from "./controllers/auth.controller.mjs";
+import profileRouter from './routes/profile.mjs'
 
 
 // Load environment variables from .env file
@@ -97,6 +98,8 @@ app.use('/api/auth', authRouter);
 
 // Mount file handling router at /api/files
 app.use('/api/files', loggedIn, filesRouter)
+
+app.use('/api/profile', loggedIn, profileRouter)
 
 // Middleware to handle 404 errors
 app.all('*', (req, res) => {

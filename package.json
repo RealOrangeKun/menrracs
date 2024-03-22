@@ -9,7 +9,8 @@
     "push-new-version-minor-main": "npm version minor & git add . & git commit & git push origin main",
     "push-new-version-major-main": "npm version major & git add . & git commit & git push origin main",
     "push-new-version-minor-branch": "npm version minor & git add . & git commit & git push",
-    "push-new-version-major-branch": "npm version major & git add . & git commit & git push"
+    "push-new-version-major-branch": "npm version major & git add . & git commit & git push",
+    "push-branch": "git add -A & git commit & git push"
   },
   "author": "Youssef Tarek",
   "license": "ISC",
@@ -26,6 +27,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.18.3",
     "express-session": "^1.18.0",
+    "express-validator": "^7.0.1",
     "https": "^1.0.0",
     "mongodb": "^6.5.0",
     "mongoose": "^8.2.2",
