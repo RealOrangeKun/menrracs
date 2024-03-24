@@ -12,6 +12,8 @@ import '../strategies/local-strategy.mjs';
 
 // Import authentication controller functions
 import { register, login, checkLoggedIn, logout, incorrectCredentials } from "../controllers/auth.controller.mjs";
+import { checkSchema } from "express-validator";
+import { createUserValidationSchema } from "../constants/validationSchema.mjs";
 
 // Create a new router instance
 const router = Router();
@@ -25,7 +27,7 @@ router.post('/login', checkLoggedIn, passport.authenticate('local', {
 }), login);
 
 // Route for user registration
-router.post('/register', register);
+router.post('/register', checkSchema(createUserValidationSchema), register);
 
 // Route for user logout
 router.post('/logout', logout);

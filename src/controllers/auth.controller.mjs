@@ -1,4 +1,5 @@
 // Import the User model
+import { matchedData, validationResult } from "express-validator";
 import User from "../models/user.schema.mjs";
 
 // Import the hashPassword function from the crypt module
@@ -20,24 +21,28 @@ import bcrypt from 'bcrypt';
  * 
  * Function then adds the new user to the Database and sends a status of `201` with a json of to tell the user that the process was successfull.
  * @async
- * @param {import('express').Request} req - Express Request object.
+ * @param {import('express').Request} data - Express Request object.
  * @param {import('express').Response} res - Express response object.
  * @returns {Object} Success or error response.
  */
 const register = async (req, res) => {
-    let { body } = req;
+    // Check if user is already logged in
+    if (req.user) return res.status(400).send({ success: false, error: "User is already logged in please logout first" });
+    if (!req.body.username || !req.body.password || !req.body.email) return res.status(400).json({ success: false, error: "Username, Password and Email are required" })
+    const result = validationResult(req);
+    if (!result.isEmpty()) return res.status(400).json({ success: false, errors: result.array() })
+    const data = matchedData(req);
     try {
-        // Check if user is already logged in
-        if (req.user) throw new Error("User is logged in, please logout to register");
+
 
         // Hash the password before saving it
-        body.password = hashPassword(body.password);
+        data.password = hashPassword(data.password);
 
         // Check if username or email already exists
-        if (await User.findOne({ $or: [{ username: body.username }, { email: body.email }] })) throw new Error("User with this email or username already exists");
+        if (await User.findOne({ $or: [{ username: data.username }, { email: data.email }] })) throw new Error("User with this email or username already exists");
 
         // Create a new user and save to database
-        const user = await User.create(body);
+        const user = await User.create(data);
         return res.status(201).json({ success: true, message: "User registered successfully" });
     } catch (error) {
         // Return error response if registration fails

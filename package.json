@@ -6,10 +6,8 @@
   "scripts": {
     "test": "jest",
     "start:dev": "nodemon src/app.mjs",
-    "push-new-version-minor-main": "npm version minor & git add . & git commit & git push origin main",
-    "push-new-version-major-main": "npm version major & git add . & git commit & git push origin main",
-    "push-new-version-minor-branch": "npm version minor & git add . & git commit & git push",
-    "push-new-version-major-branch": "npm version major & git add . & git commit & git push",
+    "push-version-minor": "npm version minor & git add -A & git commit & git push",
+    "push-version-major": "npm version major & git add -A & git commit & git push",
     "push-branch": "git add -A & git commit & git push"
   },
   "author": "Youssef Tarek",
