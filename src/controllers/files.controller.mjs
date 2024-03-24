@@ -1,6 +1,8 @@
 import path from 'path';
 import User from '../models/user.schema.mjs';
 import fs from 'fs';
+import ffmpeg from 'fluent-ffmpeg';
+import { exec } from 'child_process';
 
 /**
  * @description 
@@ -83,7 +85,7 @@ const uploadFiles = async (req, res) => {
             // Checking if file with the same name already exists
             if (fs.existsSync(newPath)) {
                 // Deleting duplicate file
-                await fs.unlink(file.path, (unlinkErr) => { });
+                await fs.unlink(file.path, (unlinkErr) => { console.error("Couldn't delete binary file"); });
                 continue;
             }
 
@@ -99,7 +101,7 @@ const uploadFiles = async (req, res) => {
                     await user.save();
 
                     // Deleting temporary file after processing
-                    await fs.unlink(file.path, (unlinkErr) => { });
+                    await fs.unlink(file.path, (unlinkErr) => { console.error("Couldn't delete binary file"); });
                 }
             });
 
@@ -304,6 +306,103 @@ const updateFile = async (req, res) => {
         res.status(500).json({ success: false, error: "File updating failed" });
     }
 }
+/**
+ * @description 
+ * 
+ * 
+ * @param {import('express').Request} req - The Express request object.
+ * @param {import('express').Response} res - The Express response object.
+ */
+const convertFile = async (req, res) => {
+    const { file, query: { from, to } } = req;
+    if (!file) return res.status(400).json({ success: false, error: "No file provided" });
+    if (!from || !to) return res.status(400).json({ success: false, error: "From and To params are required" });
+    const originalName = file.originalname;
+    const pathOriginal = file.path;
+    switch (from.toLowerCase()) {
+        case 'pdf': {
+            switch (to.toLowerCase()) {
+                case 'docx': {
+                    const newFileName = 'converted-' + originalName.replace(/\.[^.]+$/, ".docx");
+                    const newFilePath = path.join(process.cwd(), 'converted', newFileName);
+                    const pythonScriptPath = path.join(process.cwd(), 'src', 'pyscripts', 'pdfToDocx.py');
+                    const command = `python3 ${pythonScriptPath} ${pathOriginal} ${newFilePath}`;
+                    exec(command, (error, stdout, stderr) => {
+                        if (error) {
+                            console.error(`Error executing Python script: ${error}`);
+                            return res.status(500).json({ success: false, error: "PDF to DOCX conversion failed" });
+                        }
+                        return res.status(200).download(newFilePath, newFileName, (err) => {
+                            if (err) {
+                                fs.unlink(newFilePath, (unlinkErr) => {
+                                    if (unlinkErr) {
+                                        console.error("Error while deleting file:", unlinkErr);
+                                    }
+                                });
+                                console.error("Download failed");
+                            }
+                            else {
+                                fs.unlink(newFilePath, (unlinkErr) => {
+                                    if (unlinkErr) {
+                                        console.error("Error while deleting file:", unlinkErr);
+                                    }
+                                });
+                            }
+                        });
+                    });
+                    break;
+                }
+                default: {
+                    await fs.unlink(file.path, (unlinkErr) => { });
+                    return res.status(400).json({ success: false, error: "Unsupported conversion: PDF to " + to });
+                }
+            }
+            break;
+        }
+        case 'mp4': {
+            switch (to.toLowerCase()) {
+                case 'mp3': {
+                    const newFileName = 'converted-' + originalName.replace(/\.[^.]+$/, ".mp3");
+                    const newFilePath = path.join(process.cwd(), 'converted', newFileName);
+                    ffmpeg(pathOriginal)
+                        .toFormat('mp3')
+                        .save(newFilePath)
+                        .on('end', async () => {
+                            res.download(newFilePath, newFileName, async (err) => {
+                                if (err) {
+                                    await fs.unlink(file.path, (unlinkErr) => { console.error("Couldn't delete binary file"); });
+                                    await fs.unlink(newFilePath, (unlinkErr) => {
+                                        if (unlinkErr) {
+                                            console.error("Error while deleting file:", unlinkErr);
+                                        }
+                                    });
+                                } else {
+                                    await fs.unlink(file.path, (unlinkErr) => { console.error("Couldn't delete binary file"); });
+                                    await fs.unlink(newFilePath, (unlinkErr) => {
+                                        if (unlinkErr) {
+                                            console.error("Error while deleting file:", unlinkErr);
+                                        }
+                                    });
+                                }
+                            });
+                        })
+                        .on('error', () => res.status(500).json({ success: false, error: "There was an issue while trying to convert" }));
+                    break;
+                }
+                default: {
+                    await fs.unlink(file.path, (unlinkErr) => { });
+                    return res.status(400).json({ success: false, error: "Unsupported conversion: MP4 to " + to });
+                }
+            }
+            break;
+        }
+        default: {
+            await fs.unlink(file.path, (unlinkErr) => { });
+            return res.status(400).json({ success: false, error: "Unsupported conversion: " + from + " to " + to });
+        }
+    }
+}
 
 
-export { getFile, uploadFiles, deleteFiles, updateFile }
+
+export { getFile, uploadFiles, deleteFiles, updateFile, convertFile }

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { deleteFiles, getFile, updateFile, uploadFiles } from '../controllers/files.controller.mjs';
+import { convertFile, deleteFiles, getFile, updateFile, uploadFiles } from '../controllers/files.controller.mjs';
 
 const upload = multer({ dest: 'uploads/' })
 const router = Router()
@@ -13,5 +13,7 @@ router.get('/', getFile)
 router.delete('/', deleteFiles)
 
 router.put('/', upload.single('file'), updateFile)
+
+router.post('/convert', upload.single('file'), convertFile)
 
 export default router;
