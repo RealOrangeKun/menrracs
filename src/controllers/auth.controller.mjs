@@ -3,7 +3,7 @@ import { matchedData, validationResult } from "express-validator";
 import User from "../models/user.schema.mjs";
 
 // Import the hashPassword function from the crypt module
-import hashPassword from './crypt.mjs';
+import hashPassword from '../helpers/crypt.mjs';
 
 // Import the bcrypt library for password hashing
 import bcrypt from 'bcrypt';

@@ -1,6 +1,6 @@
 import { matchedData, validationResult } from 'express-validator';
 import User from '../models/user.schema.mjs';
-import hashPassword from './crypt.mjs';
+import hashPassword from '../helpers/crypt.mjs';
 
 /**
  * @description 

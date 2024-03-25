@@ -33,7 +33,7 @@ import { readFileSync } from "fs";
 // Router for authentication routes
 import authRouter from './routes/auth.mjs';
 import filesRouter from './routes/files.mjs'
-import { checkLoggedIn, loggedIn } from "./controllers/auth.controller.mjs";
+import { loggedIn } from "./controllers/auth.controller.mjs";
 import profileRouter from './routes/profile.mjs'
 
 
@@ -92,6 +92,8 @@ app.use(passport.initialize());
 
 // Middleware to restore session data
 app.use(passport.session());
+
+
 
 // Mount authentication router at /api/auth
 app.use('/api/auth', authRouter);

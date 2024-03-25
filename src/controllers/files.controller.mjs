@@ -1,8 +1,9 @@
 import path from 'path';
-import User from '../models/user.schema.mjs';
 import fs from 'fs';
-import ffmpeg from 'fluent-ffmpeg';
-import { exec } from 'child_process';
+import { conversions } from '../constants/supportedConversions.mjs';
+import { deleteFilesHelper, updateFileHelper, uploadFilesHelper } from '../helpers/files.helper.mjs';
+import { convertFromCSVToJson, convertFromPdfToDocx, convertUsingFFMPEG } from '../helpers/convertFiles.helper.mjs';
+import { upload } from '../routes/files.mjs';
 
 /**
  * @description 
@@ -72,49 +73,7 @@ const uploadFiles = async (req, res) => {
     // Checking if files were provided
     if (uploadedFiles && uploadedFiles.length > 0) {
         // Array to store names of processed files
-        const processedFiles = [];
-
-        // Iterating through uploaded files
-        for (const file of uploadedFiles) {
-            // Extracting file details
-            const originalName = file.originalname;
-            const fileExtension = path.extname(originalName).toLowerCase();
-            const newFileName = req.user.username.toLowerCase() + '-' + originalName;
-            const newPath = 'processed/' + newFileName;
-
-            // Checking if file with the same name already exists
-            if (fs.existsSync(newPath)) {
-                // Deleting duplicate file
-                await fs.unlink(file.path, (unlinkErr) => { console.error("Couldn't delete binary file"); });
-                continue;
-            }
-
-            // Renaming and moving the file
-            await fs.rename(file.path, newPath, async (err) => {
-                if (err) {
-                    // Handling file processing error
-                    return res.status(500).json({ error: 'File processing failed' });
-                } else {
-                    // Saving file metadata to user's document
-                    const user = await User.findById(req.user.id);
-                    user.files.push({ fileName: originalName, fileType: fileExtension, createdAt: new Date() });
-                    await user.save();
-
-                    // Deleting temporary file after processing
-                    await fs.unlink(file.path, (unlinkErr) => { console.error("Couldn't delete binary file"); });
-                }
-            });
-
-            // Storing processed file name
-            processedFiles.push(newFileName);
-        }
-
-        // Responding based on the processing outcome
-        if (processedFiles.length === 0) {
-            res.status(400).json({ success: false, error: "Files already in directory" });
-        } else if (processedFiles.length <= uploadedFiles.length) {
-            res.status(201).json({ success: true, message: "New files processed and saved successfully" });
-        }
+        return await uploadFilesHelper(uploadedFiles, req, res);
     } else {
         // Handling case where no files were provided
         res.status(400).json({ success: false, error: "No file/files provided in the form body" });
@@ -139,110 +98,8 @@ const deleteFiles = async (req, res) => {
     if (!files) {
         return res.status(400).json({ success: false, error: "No files provided or invalid format" });
     }
-
-    // Array to store deletion results
-    const deletionResults = [];
-
     try {
-        // If 'files' parameter is not an array
-        if (!Array.isArray(files)) {
-            const fileName = files;
-            const name = files.split('-');
-            // If user didn't provide username in query then it will be added in filepath2
-            const filePath = path.join(process.cwd(), 'processed', fileName),
-                filePath2 = path.join(process.cwd(), 'processed', `${req.user.username.toLocaleLowerCase()}-${name[0]}`);
-
-            // If file exists at first potential location
-            if (fs.existsSync(filePath)) {
-                // If file is owned by current user
-                if (name[0] !== req.user.username) {
-                    deletionResults.push({ fileName, success: false, error: "Failed to delete file" });
-                } else {
-                    // Deleting file
-                    await fs.unlink(filePath, async (err) => {
-                        if (err) {
-                            // Push the error
-                            deletionResults.push({ fileName, success: false, error: "Failed to delete file" });
-                        } else {
-                            // Removing file metadata from user's document
-                            const user = await User.findById(req.user.id);
-                            user.files = user.files.filter(file => file.fileName !== fileName);
-                            await user.save();
-                            deletionResults.push({ fileName, success: true, message: "File deleted successfully" });
-                        }
-                    });
-                }
-            }
-            // Using second path if username isn't provided
-            else if (fs.existsSync(filePath2)) {
-                // Deleting file
-                await fs.unlink(filePath2, async (err) => {
-                    if (err) {
-                        deletionResults.push({ fileName, success: false, error: "Failed to delete file" });
-                    }
-                });
-
-                // Removing file metadata from user's document
-                const user = await User.findById(req.user.id);
-                user.files = user.files.filter(file => file.fileName !== fileName);
-                await user.save();
-                deletionResults.push({ fileName, success: true, message: "File deleted successfully" });
-            }
-            // If file not found
-            else {
-                deletionResults.push({ fileName, success: false, error: "File not found" });
-            }
-        }
-        // If 'files' parameter is an array
-        else {
-            for (const fileName of files) {
-                const name = fileName.split('-');
-                const filePath = path.join(process.cwd(), 'processed', fileName),
-                    filePath2 = path.join(process.cwd(), 'processed', `${req.user.username.toLocaleLowerCase()}-${name[0]}`);
-
-                // If file exists at first potential location
-                if (fs.existsSync(filePath)) {
-                    // If file is owned by current user
-                    if (name[0] !== req.user.username) {
-                        continue;
-                    }
-                    // Deleting file
-                    await fs.unlink(filePath, async (err) => {
-                        if (err) {
-                            deletionResults.push({ fileName, success: false, error: "Failed to delete file" });
-                        } else {
-                            // Removing file metadata from user's document
-                            const user = await User.findById(req.user.id);
-                            user.files = user.files.filter(file => file.fileName !== fileName);
-                            await user.save();
-                            deletionResults.push({ fileName, success: true, message: "File deleted successfully" });
-                        }
-                    });
-                }
-                // If file exists at second potential location
-                else if (fs.existsSync(filePath2)) {
-                    // Deleting file
-                    await fs.unlink(filePath2, async (err) => {
-                        if (err) {
-                            deletionResults.push({ fileName, success: false, error: "Failed to delete file" });
-                        }
-                    });
-
-                    // Removing file metadata from user's document
-                    const user = await User.findById(req.user.id);
-                    user.files = user.files.filter(file => file.fileName !== fileName);
-                    await user.save();
-                    deletionResults.push({ fileName, success: true, message: "File deleted successfully" });
-                }
-                // If file not found
-                else {
-                    deletionResults.push({ fileName, success: false, error: "File not found" });
-                }
-            }
-        }
-
-        // Sending deletion results
-        res.status(200).json({ success: true, deletionResults });
+        return await deleteFilesHelper(files, req, res);
     } catch (error) {
         // Handling deletion error
         res.status(500).json({ success: false, error: "Failed to delete files" })
@@ -261,49 +118,17 @@ const deleteFiles = async (req, res) => {
 const updateFile = async (req, res) => {
     // Retrieving 'file' and 'name' parameters from request
     const { file } = req;
-    const { name } = req.query;
 
     // Handling case where 'name' or 'file' parameters are not provided
-    if (!name || !file) {
+    if (!file) {
         return res.status(400).json({ success: false, error: "No files provided or invalid format" });
     }
 
     try {
-        // Splitting 'name' parameter to extract file details
-        const parts = name.split('-');
-        // Checking if the user added their username in the query or not
-        const filePath = path.join(process.cwd(), 'processed', parts[0] === req.user.username ? name : `${req.user.username}-${name}`);
-        const originalName = file.originalname;
-        const fileExtension = path.extname(originalName).toLowerCase();
-        const newFileName = req.user.username.toLowerCase() + '-' + originalName;
-        const newPath = 'processed/' + newFileName;
-
-        // If file does not exist
-        if (!fs.existsSync(newPath)) {
-            return res.status(404).json({ success: false, error: "File not found" });
-        }
-
-        // Renaming and updating file
-        await fs.rename(file.path, newPath, async (err) => {
-            if (err) {
-                return res.status(500).json({ error: 'File processing failed' });
-            } else {
-                // Updating file metadata in user's document
-                const user = await User.findById(req.user.id);
-                const fileData = user.files.find(f => f.fileName === file.originalname);
-                fileData.updatedAt = new Date();
-                await user.save();
-
-                // Deleting temporary file after processing
-                await fs.unlink(file.path, (unlinkErr) => { });
-            }
-        });
-
-        // Sending success response
-        res.status(200).json({ success: true, message: "File updated successfully" });
+        return await updateFileHelper(file, req, res);
     } catch (error) {
         // Handling file updating error
-        res.status(500).json({ success: false, error: "File updating failed" });
+        return res.status(500).json({ success: false, error: "File updating failed" });
     }
 }
 /**
@@ -315,94 +140,41 @@ const updateFile = async (req, res) => {
  */
 const convertFile = async (req, res) => {
     const { file, query: { from, to } } = req;
+    const uploadedExtension = path.extname(file.originalname).toLowerCase();
     if (!file) return res.status(400).json({ success: false, error: "No file provided" });
     if (!from || !to) return res.status(400).json({ success: false, error: "From and To params are required" });
+    if (!conversions.has(from.toLowerCase()) || !conversions.get(from.toLowerCase())) return res.status(400).json({ success: false, error: "Unsupported conversion: " + from + " to " + to });
+    if (uploadedExtension !== `.${from.toLowerCase()}`) {
+        return res.status(400).json({ success: false, error: "Uploaded file does not match the specified 'from' format" });
+    }
     const originalName = file.originalname;
     const pathOriginal = file.path;
-    switch (from.toLowerCase()) {
-        case 'pdf': {
-            switch (to.toLowerCase()) {
-                case 'docx': {
-                    const newFileName = 'converted-' + originalName.replace(/\.[^.]+$/, ".docx");
-                    const newFilePath = path.join(process.cwd(), 'converted', newFileName);
-                    const pythonScriptPath = path.join(process.cwd(), 'src', 'pyscripts', 'pdfToDocx.py');
-                    const command = `python3 ${pythonScriptPath} ${pathOriginal} ${newFilePath}`;
-                    exec(command, (error, stdout, stderr) => {
-                        if (error) {
-                            console.error(`Error executing Python script: ${error}`);
-                            return res.status(500).json({ success: false, error: "PDF to DOCX conversion failed" });
-                        }
-                        return res.status(200).download(newFilePath, newFileName, (err) => {
-                            if (err) {
-                                fs.unlink(newFilePath, (unlinkErr) => {
-                                    if (unlinkErr) {
-                                        console.error("Error while deleting file:", unlinkErr);
-                                    }
-                                });
-                                console.error("Download failed");
-                            }
-                            else {
-                                fs.unlink(newFilePath, (unlinkErr) => {
-                                    if (unlinkErr) {
-                                        console.error("Error while deleting file:", unlinkErr);
-                                    }
-                                });
-                            }
-                        });
-                    });
-                    break;
-                }
-                default: {
-                    await fs.unlink(file.path, (unlinkErr) => { });
-                    return res.status(400).json({ success: false, error: "Unsupported conversion: PDF to " + to });
-                }
-            }
-            break;
-        }
-        case 'mp4': {
-            switch (to.toLowerCase()) {
-                case 'mp3': {
-                    const newFileName = 'converted-' + originalName.replace(/\.[^.]+$/, ".mp3");
-                    const newFilePath = path.join(process.cwd(), 'converted', newFileName);
-                    ffmpeg(pathOriginal)
-                        .toFormat('mp3')
-                        .save(newFilePath)
-                        .on('end', async () => {
-                            res.download(newFilePath, newFileName, async (err) => {
-                                if (err) {
-                                    await fs.unlink(file.path, (unlinkErr) => { console.error("Couldn't delete binary file"); });
-                                    await fs.unlink(newFilePath, (unlinkErr) => {
-                                        if (unlinkErr) {
-                                            console.error("Error while deleting file:", unlinkErr);
-                                        }
-                                    });
-                                } else {
-                                    await fs.unlink(file.path, (unlinkErr) => { console.error("Couldn't delete binary file"); });
-                                    await fs.unlink(newFilePath, (unlinkErr) => {
-                                        if (unlinkErr) {
-                                            console.error("Error while deleting file:", unlinkErr);
-                                        }
-                                    });
-                                }
-                            });
-                        })
-                        .on('error', () => res.status(500).json({ success: false, error: "There was an issue while trying to convert" }));
-                    break;
-                }
-                default: {
-                    await fs.unlink(file.path, (unlinkErr) => { });
-                    return res.status(400).json({ success: false, error: "Unsupported conversion: MP4 to " + to });
-                }
-            }
-            break;
-        }
-        default: {
+    switch (conversions.get(from.toLowerCase())) {
+        case 'docx':
+            return await convertFromPdfToDocx(file, originalName, pathOriginal, res);
+        case 'mp3':
+            return await convertUsingFFMPEG(pathOriginal, originalName, file, res, 'mp3');
+        case 'wav':
+            return await convertUsingFFMPEG(pathOriginal, originalName, file, res, 'wav');
+        case 'mp4':
+            return await convertUsingFFMPEG(pathOriginal, originalName, file, res, 'mp4');
+        case 'json':
+            return await convertFromCSVToJson(pathOriginal, originalName, file, res);
+        default:
             await fs.unlink(file.path, (unlinkErr) => { });
-            return res.status(400).json({ success: false, error: "Unsupported conversion: " + from + " to " + to });
-        }
+            return res.status(400).json({ success: false, error: `Unsupported conversion: ${from} to ${to}` });
     }
+
+}
+
+const multerMiddleWare = (req, res, next) => {
+    upload(req, res, (err) => {
+        if (err) {
+            return res.status(400).json({ success: false, error: err.message });
+        }
+        next();
+    })
 }
 
 
-
-export { getFile, uploadFiles, deleteFiles, updateFile, convertFile }
+export { getFile, uploadFiles, deleteFiles, updateFile, convertFile, multerMiddleWare }
