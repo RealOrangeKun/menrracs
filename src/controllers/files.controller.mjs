@@ -1,9 +1,5 @@
-import path from 'path';
-import fs from 'fs';
-import { conversions } from '../constants/supportedConversions.mjs';
 import { deleteFilesHelper, updateFileHelper, uploadFilesHelper } from '../helpers/files.helper.mjs';
-import { convertFromCSVToJson, convertFromPdfToDocx, convertUsingFFMPEG } from '../helpers/convertFiles.helper.mjs';
-import { upload } from '../routes/files.mjs';
+import { bucket, upload, uploads } from '../constants/filesConstants.mjs';
 
 /**
  * @description 
@@ -18,40 +14,39 @@ import { upload } from '../routes/files.mjs';
  */
 
 const getFile = async (req, res) => {
-    // Extracting 'name' parameter from request query
-    const { query: { name } } = req;
+    try {
+        // Extracting 'file' parameter from request query
+        const { query: { file } } = req;
 
-    // If 'name' parameter is provided
-    if (name) {
-        // Constructing file path
-        const filePath = path.join(process.cwd(), 'processed', name);
+        // If 'name' parameter is provided
+        if (file) {
+            // Constructing file path in the bucket
+            const filePath = `${req.user.username.toLowerCase()}/${file}`;
 
-        // Checking if file exists
-        if (fs.existsSync(filePath)) {
-            // Downloading file
-            return res.download(filePath, (err) => {
-                // Handling potential errors during download
-            });
-        }
-        else {
-            // Returning 404 if file not found
-            return res.status(404).json({ success: false, error: "File not found" });
-        }
-    }
-    else {
-        // If 'name' parameter is not provided, list all files belonging to the user
-        await fs.readdir(path.join(process.cwd(), 'processed').toString(), (err, files) => {
-            if (err) {
-                // Handling directory read error
-                return res.status(500).json({ success: false, error: 'Failed to read directory' });
+            // Check if the file exists in the bucket
+            const [exists] = await bucket.file(filePath).exists();
+
+            if (exists) {
+                // Get a signed URL for the file to allow downloading
+                const [signedUrl] = await bucket.file(filePath).getSignedUrl({ action: 'read', expires: '01-01-2100' });
+
+                // Redirect the client to the signed URL to download the file
+                return res.redirect(signedUrl);
             } else {
-                // Filtering user's files based on username
-                const userFiles = files.filter(file => file.startsWith(req.user.username.toLocaleLowerCase()));
-
-                // Returning list of user's files
-                return res.status(200).json({ success: true, message: "No name query provided", files: userFiles });
+                // Return 404 if file not found
+                return res.status(404).json({ success: false, error: "File not found" });
             }
-        });
+        } else {
+            // If 'name' parameter is not provided, list all files belonging to the user
+            const [files] = await bucket.getFiles({ prefix: `${req.user.username.toLowerCase()}/` });
+            const userFiles = files.map(file => file.name.split('/').pop());
+
+            // Return list of user's files
+            return res.status(200).json({ success: true, message: "No name query provided", files: userFiles });
+        }
+    } catch (error) {
+        console.error('Error retrieving file:', error);
+        return res.status(500).json({ success: false, error: "Internal Server Error" });
     }
 }
 
@@ -131,50 +126,44 @@ const updateFile = async (req, res) => {
         return res.status(500).json({ success: false, error: "File updating failed" });
     }
 }
+
+
 /**
- * @description 
+ * @description Middleware for handling file uploads using Multer.
  * 
+ * This middleware function wraps around Multer's upload function to handle file uploads.
+ * It checks for any errors that occur during the upload process and sends an appropriate
+ * response if an error is encountered.
  * 
  * @param {import('express').Request} req - The Express request object.
  * @param {import('express').Response} res - The Express response object.
+ * @param {Function} next - The next middleware function in the request-response cycle.
  */
-const convertFile = async (req, res) => {
-    const { file, query: { from, to } } = req;
-    const uploadedExtension = path.extname(file.originalname).toLowerCase();
-    if (!file) return res.status(400).json({ success: false, error: "No file provided" });
-    if (!from || !to) return res.status(400).json({ success: false, error: "From and To params are required" });
-    if (!conversions.has(from.toLowerCase()) || !conversions.get(from.toLowerCase())) return res.status(400).json({ success: false, error: "Unsupported conversion: " + from + " to " + to });
-    if (uploadedExtension !== `.${from.toLowerCase()}`) {
-        return res.status(400).json({ success: false, error: "Uploaded file does not match the specified 'from' format" });
-    }
-    const originalName = file.originalname;
-    const pathOriginal = file.path;
-    switch (conversions.get(from.toLowerCase())) {
-        case 'docx':
-            return await convertFromPdfToDocx(file, originalName, pathOriginal, res);
-        case 'mp3':
-            return await convertUsingFFMPEG(pathOriginal, originalName, file, res, 'mp3');
-        case 'wav':
-            return await convertUsingFFMPEG(pathOriginal, originalName, file, res, 'wav');
-        case 'mp4':
-            return await convertUsingFFMPEG(pathOriginal, originalName, file, res, 'mp4');
-        case 'json':
-            return await convertFromCSVToJson(pathOriginal, originalName, file, res);
-        default:
-            await fs.unlink(file.path, (unlinkErr) => { });
-            return res.status(400).json({ success: false, error: `Unsupported conversion: ${from} to ${to}` });
-    }
-
-}
-
-const multerMiddleWare = (req, res, next) => {
+const multerMiddleWareSingle = (req, res, next) => {
+    // Invoking Multer's upload function to handle file uploads
     upload(req, res, (err) => {
+        // Handling errors during file upload
         if (err) {
-            return res.status(400).json({ success: false, error: err.message });
+            console.error(err);
+            // Sending an error response if an error occurs
+            return res.status(500).json({ success: false, error: err.message });
         }
+        // Proceeding to the next middleware function if no error occurs
         next();
-    })
+    });
+
+}
+const multerMiddleWareMultiple = (req, res, next) => {
+    uploads(req, res, (err) => {
+        // Handling errors during file upload
+        if (err) {
+            // Sending an error response if an error occurs
+            return res.status(500).json({ success: false, error: err.message });
+        }
+        // Proceeding to the next middleware function if no error occurs
+        next();
+    });
 }
 
 
-export { getFile, uploadFiles, deleteFiles, updateFile, convertFile, multerMiddleWare }
+export { getFile, uploadFiles, deleteFiles, updateFile, multerMiddleWareSingle, multerMiddleWareMultiple }

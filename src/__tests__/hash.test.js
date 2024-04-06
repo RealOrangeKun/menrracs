@@ -1,6 +1,6 @@
 // Importing bcrypt library for password hashing and hashPassword function from crypt module
 import bcrypt from 'bcrypt';
-import hashPassword from '../controllers/crypt.mjs';
+import hashPassword from '../helpers/crypt.mjs';
 
 // Mocking bcrypt library methods
 jest.mock('bcrypt', () => ({

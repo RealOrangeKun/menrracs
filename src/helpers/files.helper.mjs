@@ -1,191 +1,147 @@
-import fs from 'fs';
-import path from 'path';
 import User from '../models/user.schema.mjs';
+import { bucket } from '../constants/filesConstants.mjs';
 
 
 /**
+ * Updates a file and its metadata.
  * 
- * @param {File} file 
- * @param {import('express').Request} req
- * @param {import('express').Response} res
+ * @description Renames the file and updates its metadata in the user's document.
+ * 
+ * @param {File} file - The file object representing the original file.
+ * @param {import('express').Request} req - The Express request object containing user information.
+ * @param {import('express').Response} res - The Express response object used to send the response.
+ * 
+ * @returns {Promise<void>} A promise that resolves after the file is updated and the response is sent.
  */
 export const updateFileHelper = async (file, req, res) => {
-    // Checking if the user added their username in the query or not
-    const originalName = file.originalname;
-    const newFileName = req.user.username.toLowerCase() + '-' + originalName;
-    const newPath = 'processed/' + newFileName;
+    try {
+        // Generate a neyw file name and construct the file path in the bucket
+        const originalName = file.originalname;
+        const newPath = `${req.user.username.toLowerCase()}/${originalName}`;
 
-    // If file does not exist
-    if (!fs.existsSync(newPath)) {
-        return res.status(404).json({ success: false, error: "File not found" });
-    }
+        const [exists] = await bucket.file(newPath).exists();
 
-    // Renaming and updating file
-    await fs.rename(file.path, newPath, async (err) => {
-        if (err) {
-            return res.status(500).json({ error: 'File processing failed' });
-        } else {
-            // Updating file metadata in user's document
-            const user = await User.findById(req.user.id);
-            const fileData = user.files.find(f => f.fileName === file.originalname);
+        if (!exists) {
+            return res.status(404).json({ success: false, error: "File not found" });
+        }
+
+        await bucket.file(newPath).move(newPath);
+
+        const user = await User.findById(req.user.id);
+        const fileData = user.files.find(f => f.fileName === originalName);
+        if (fileData) {
+            fileData.fileName = newFileName;
             fileData.updatedAt = new Date();
             await user.save();
-
-            // Deleting temporary file after processing
-            await fs.unlink(file.path, (unlinkErr) => { });
         }
-    });
 
-    // Sending success response
-    return res.status(200).json({ success: true, message: "File updated successfully" });
+        return res.status(200).json({ success: true, message: "File updated successfully" });
+    } catch (error) {
+        console.error('Error updating file:', error);
+        return res.status(500).json({ success: false, error: "Internal Server Error" });
+    }
 }
 
+
+/**
+ * Deletes files and updates metadata for the deleted files.
+ * 
+ * @description Deletes the specified files from the file system and updates the metadata
+ *              for the deleted files in the user's document.
+ * 
+ * @param {String[]|String} files - The name(s) of the file(s) to be deleted, or an array of file names.
+ * @param {import('express').Request} req - The Express request object containing user information.
+ * @param {import('express').Response} res - The Express response object used to send the response.
+ * 
+ * @returns {Promise<void>} A promise that resolves after the files are deleted and the response is sent.
+ */
 export const deleteFilesHelper = async (files, req, res) => {
-    // Array to store deletion results
     const deletionResults = [];
-    // If 'files' parameter is not an array
-    if (!Array.isArray(files)) {
-        const fileName = files;
-        const name = files.split('-');
-        // If user didn't provide username in query then it will be added in filepath2
-        const filePath = path.join(process.cwd(), 'processed', fileName),
-            filePath2 = path.join(process.cwd(), 'processed', `${req.user.username.toLocaleLowerCase()}-${name[0]}`);
 
-        // If file exists at first potential location
-        if (fs.existsSync(filePath)) {
-            // If file is owned by current user
-            if (name[0] !== req.user.username) {
-                deletionResults.push({ fileName, success: false, error: "Failed to delete file" });
-            } else {
-                // Deleting file
-                await fs.unlink(filePath, async (err) => {
-                    if (err) {
-                        // Push the error
-                        deletionResults.push({ fileName, success: false, error: "Failed to delete file" });
-                    } else {
-                        // Removing file metadata from user's document
-                        const user = await User.findById(req.user.id);
-                        user.files = user.files.filter(file => file.fileName !== fileName);
-                        await user.save();
-                        deletionResults.push({ fileName, success: true, message: "File deleted successfully" });
-                    }
-                });
-            }
+    try {
+        // If 'files' parameter is not an array, convert it to an array
+        if (!Array.isArray(files)) {
+            files = [files];
         }
-        // Using second path if username isn't provided
-        else if (fs.existsSync(filePath2)) {
-            // Deleting file
-            await fs.unlink(filePath2, async (err) => {
-                if (err) {
-                    deletionResults.push({ fileName, success: false, error: "Failed to delete file" });
-                }
-            });
 
-            // Removing file metadata from user's document
-            const user = await User.findById(req.user.id);
-            user.files = user.files.filter(file => file.fileName !== fileName);
-            await user.save();
-            deletionResults.push({ fileName, success: true, message: "File deleted successfully" });
-        }
-        // If file not found
-        else {
-            deletionResults.push({ fileName, success: false, error: "File not found" });
-        }
-    }
-    // If 'files' parameter is an array
-    else {
+        // Iterating through files to delete
         for (const fileName of files) {
-            const name = fileName.split('-');
-            const filePath = path.join(process.cwd(), 'processed', fileName),
-                filePath2 = path.join(process.cwd(), 'processed', `${req.user.username.toLocaleLowerCase()}-${name[0]}`);
+            const filePath = `${req.user.username.toLowerCase()}/${fileName}`; // Construct the file path in the bucket
 
-            // If file exists at first potential location
-            if (fs.existsSync(filePath)) {
-                // If file is owned by current user
-                if (name[0] !== req.user.username) {
-                    continue;
-                }
-                // Deleting file
-                await fs.unlink(filePath, async (err) => {
-                    if (err) {
-                        deletionResults.push({ fileName, success: false, error: "Failed to delete file" });
-                    } else {
-                        // Removing file metadata from user's document
-                        const user = await User.findById(req.user.id);
-                        user.files = user.files.filter(file => file.fileName !== fileName);
-                        await user.save();
-                        deletionResults.push({ fileName, success: true, message: "File deleted successfully" });
-                    }
-                });
-            }
-            // If file exists at second potential location
-            else if (fs.existsSync(filePath2)) {
-                // Deleting file
-                await fs.unlink(filePath2, async (err) => {
-                    if (err) {
-                        deletionResults.push({ fileName, success: false, error: "Failed to delete file" });
-                    }
-                });
+            // Check if the file exists in the bucket
+            const [exists] = await bucket.file(filePath).exists();
 
-                // Removing file metadata from user's document
-                const user = await User.findById(req.user.id);
-                user.files = user.files.filter(file => file.fileName !== fileName);
-                await user.save();
+            if (exists) {
+                // If the file exists, delete it
+                await bucket.file(filePath).delete();
                 deletionResults.push({ fileName, success: true, message: "File deleted successfully" });
-            }
-            // If file not found
-            else {
+            } else {
+                // If the file doesn't exist, add an entry to deletionResults
                 deletionResults.push({ fileName, success: false, error: "File not found" });
             }
         }
-    }
 
-    // Sending deletion results
-    return res.status(200).json({ success: true, deletionResults });
+        // Respond with the deletion results
+        return res.status(200).json({ success: true, deletionResults });
+    } catch (error) {
+        console.error('Error deleting files:', error);
+        return res.status(500).json({ success: false, error: "Internal Server Error" });
+    }
 }
 
+
+/**
+ * Handles the upload of files, processing them and saving metadata.
+ * 
+ * @description Iterates through the uploaded files, renames them, moves them to the user's cloud storage folder,
+ *              saves metadata to the user's document, and deletes temporary files after processing.
+ * 
+ * @param {File[]} uploadedFiles - An array of file objects representing the uploaded files.
+ * @param {import('express').Request} req - The Express request object containing user information.
+ * @param {import('express').Response} res - The Express response object used to send the response.
+ * 
+ * @returns {Promise<void>} A promise that resolves after the files are processed and the response is sent.
+ */
 export const uploadFilesHelper = async (uploadedFiles, req, res) => {
     const processedFiles = [];
+    const uploadResults = [];
 
     // Iterating through uploaded files
     for (const file of uploadedFiles) {
-        // Extracting file details
-        const originalName = file.originalname;
-        const fileExtension = path.extname(originalName).toLowerCase();
-        const newFileName = req.user.username.toLowerCase() + '-' + originalName;
-        const newPath = 'processed/' + newFileName;
-
-        // Checking if file with the same name already exists
-        if (fs.existsSync(newPath)) {
-            // Deleting duplicate file
-            await fs.unlink(file.path, (unlinkErr) => { console.error("Couldn't delete binary file"); });
-            continue;
-        }
-
-        // Renaming and moving the file
-        await fs.rename(file.path, newPath, async (err) => {
-            if (err) {
-                // Handling file processing error
-                return res.status(500).json({ error: 'File processing failed' });
-            } else {
-                // Saving file metadata to user's document
-                const user = await User.findById(req.user.id);
-                user.files.push({ fileName: originalName, fileType: fileExtension, createdAt: new Date() });
-                await user.save();
-
-                // Deleting temporary file after processing
-                await fs.unlink(file.path, (unlinkErr) => { console.error("Couldn't delete binary file"); });
+        try {
+            // Extracting file details
+            const originalName = file.originalname;
+            const newPath = `${req.user.username.toLowerCase()}/${originalName}`;
+            const blob = bucket.file(newPath);
+            const [exists] = await blob.exists();
+            if (exists) {
+                uploadResults.push({ fileName: originalName, success: false, error: "File already exists" })
+                continue;
             }
-        });
+            const blobStream = blob.createWriteStream();
 
-        // Storing processed file name
-        processedFiles.push(newFileName);
+            await new Promise((resolve, reject) => {
+                blobStream.on('error', (err) => {
+                    uploadResults.push({ fileName: originalName, success: false, error: err.message })
+                    reject(err);
+                });
+
+                blobStream.on('finish', () => {
+                    processedFiles.push(originalName);
+                    uploadResults.push({ fileName: originalName, success: true, error: "File uploaded successfully" })
+                    resolve();
+                });
+                blobStream.end(file.buffer);
+            });
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            return res.status(500).json({ success: false, error: "Couldn't upload file" });
+        }
     }
-
-    // Responding based on the processing outcome
+    // Responding based on the processing outcome after all files are processed
     if (processedFiles.length === 0) {
-        return res.status(400).json({ success: false, error: "Files already in directory" });
-    } else if (processedFiles.length <= uploadedFiles.length) {
-        return res.status(201).json({ success: true, message: "New files processed and saved successfully" });
+        return res.status(400).json({ success: false, uploadResults });
+    } else {
+        return res.status(201).json({ success: true, message: "New files processed and saved successfully", uploadResults });
     }
 }

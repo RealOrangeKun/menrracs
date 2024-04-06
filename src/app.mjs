@@ -30,11 +30,20 @@ import cookieParser from "cookie-parser";
 // File system module for reading files
 import { readFileSync } from "fs";
 
+
+// rateLimit to rate limit the requests
+import { rateLimit } from 'express-rate-limit'
+
 // Router for authentication routes
 import authRouter from './routes/auth.mjs';
 import filesRouter from './routes/files.mjs'
 import { loggedIn } from "./controllers/auth.controller.mjs";
 import profileRouter from './routes/profile.mjs'
+import { redisClient } from "./constants/redisClient.mjs";
+import { redisMiddleware } from "./controllers/redis.controller.mjs";
+
+
+
 
 
 // Load environment variables from .env file
@@ -43,10 +52,19 @@ config();
 // Create an instance of the Express application
 const app = express();
 
+// Create a rate limiter middleware
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again later',
+    headers: true, // Send appropriate headers with the response
+});
+
 // Connect to MongoDB database
 mongoose.connect(process.env.DB || 'mongodb://localhost:27017/menracs')
-    .then(() => {
+    .then(async () => {
         console.log("Connected to DB!");
+        await redisClient.connect();
         // Create HTTPS server
         const sslServer = https.createServer({
             // Read SSL certificate key and certificate files
@@ -57,6 +75,11 @@ mongoose.connect(process.env.DB || 'mongodb://localhost:27017/menracs')
         sslServer.listen(process.env.PORT || 5000, () => console.log('Listening on port ' + process.env.PORT || 5000))
     })
     .catch(err => console.log(err.message));
+
+// Middleware to limit the incoming requests
+app.use(limiter)
+
+
 
 // Middleware to parse JSON request bodies
 app.use(express.json());
@@ -93,24 +116,20 @@ app.use(passport.initialize());
 // Middleware to restore session data
 app.use(passport.session());
 
+// Middleware to store cache for repeated requests
+app.use(redisMiddleware);
+
 
 
 // Mount authentication router at /api/auth
-app.use('/api/auth', authRouter);
+app.use('/api/v1/auth', authRouter);
 
 // Mount file handling router at /api/files
-app.use('/api/files', loggedIn, filesRouter)
+app.use('/api/v1/files', loggedIn, filesRouter)
 
-app.use('/api/profile', loggedIn, profileRouter)
+app.use('/api/v1/profile', loggedIn, profileRouter)
 
-// Middleware to handle 404 errors
 app.all('*', (req, res) => {
-    // Set the HTTP status code to 404
-    res.status(404).json({
-        error: 'Not Found',
-        message: 'Oops! Looks like the page you are looking for does not exist.'
-    });
-});
-
-
+    return res.status(404).send("This endpoint doesn't exist")
+})
 

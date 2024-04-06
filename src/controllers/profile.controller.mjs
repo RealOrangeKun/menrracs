@@ -1,6 +1,7 @@
 import { matchedData, validationResult } from 'express-validator';
 import User from '../models/user.schema.mjs';
 import hashPassword from '../helpers/crypt.mjs';
+import { redisClient } from '../constants/redisClient.mjs';
 
 /**
  * @description 
@@ -15,14 +16,17 @@ import hashPassword from '../helpers/crypt.mjs';
  */
 const getProfile = async (req, res) => {
     try {
-        const user = await User.findOne({ username: req.user.id });
-        res.status(200).json({
+        const user = await User.findById({ _id: req.user.id });
+        const response = {
             success: true, data: {
                 username: user.username, email: user.email, filesUploaded: user.files
             }
-        })
+        };
+        await redisClient.setEx(`${req.user.id}:${req.method}:${req.baseUrl}`, 1000 * 60 * 15, JSON.stringify(response))
+        res.status(200).json(response);
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message })
+        console.log(error);
+        res.status(500).json({ success: false, error: "Couldn't get profile" })
     }
 }
 /**

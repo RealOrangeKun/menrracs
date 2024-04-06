@@ -1,19 +1,19 @@
 import { Router } from 'express';
-import multer from 'multer';
-import { convertFile, deleteFiles, getFile, multerMiddleWare, updateFile, uploadFiles } from '../controllers/files.controller.mjs';
+import { deleteFiles, getFile, multerMiddleWareMultiple, multerMiddleWareSingle, updateFile, uploadFiles } from '../controllers/files.controller.mjs';
 
-export const upload = multer({ dest: 'uploads/' }).single('file')
-const router = Router()
-const uploads = multer({ dest: 'uploads/' })
+const router = Router();
 
-router.post('/', uploads.array('files'), uploadFiles);
+// Route for handling file uploads
+router.post('/', multerMiddleWareMultiple, uploadFiles);
 
-router.get('/', getFile)
+// Route for retrieving files
+router.get('/', getFile);
 
-router.delete('/', deleteFiles)
+// Route for deleting files
+router.delete('/', deleteFiles);
 
-router.put('/', multerMiddleWare, updateFile)
+// Route for updating files
+router.put('/', multerMiddleWareSingle, updateFile);
 
-router.post('/convert', multerMiddleWare, convertFile)
 
 export default router;

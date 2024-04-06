@@ -1,7 +1,7 @@
 // Import necessary modules and functions
 import { verify, login, logout, checkLoggedIn, register } from "../controllers/auth.controller.mjs";
 import bcrypt from 'bcrypt';
-import hashPassword from "../controllers/crypt.mjs";
+import hashPassword from "../helpers/crypt.mjs";
 import User from "../models/user.schema.mjs";
 
 // Mocking user schema, crypt module, and bcrypt library for testing
@@ -12,7 +12,7 @@ jest.mock('../models/user.schema', () => ({
         create: jest.fn()
     }
 }));
-jest.mock('../controllers/crypt', () => ({
+jest.mock('../helpers/crypt', () => ({
     __esModule: true,
     default: jest.fn()
 }));

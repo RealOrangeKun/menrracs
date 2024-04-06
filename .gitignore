@@ -30,3 +30,6 @@ cert/
 processed/
 uploads/
 converted/
+
+gcsKey.json
+*.rdb
