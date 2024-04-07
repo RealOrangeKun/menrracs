@@ -34,6 +34,8 @@ import { readFileSync } from "fs";
 // rateLimit to rate limit the requests
 import { rateLimit } from 'express-rate-limit'
 
+import { startCronJobs } from "./cron tasks/inactiveUsersCleanup.task.mjs";
+
 // Router for authentication routes
 import authRouter from './routes/auth.mjs';
 import filesRouter from './routes/files.mjs'
@@ -72,6 +74,7 @@ mongoose.connect(process.env.DB || 'mongodb://localhost:27017/menracs')
             cert: readFileSync(process.env.CERT_PATH)
         }, app)
         // Start HTTPS server
+        startCronJobs();
         sslServer.listen(process.env.PORT || 5000, () => console.log('Listening on port ' + process.env.PORT || 5000))
     })
     .catch(err => console.log(err.message));
@@ -89,6 +92,7 @@ app.use(express.urlencoded({ extended: true }))
 
 // Middleware to parse cookies
 app.use(cookieParser(process.env.SECRET_KEY));
+
 
 // Configure session middleware
 app.use(session({

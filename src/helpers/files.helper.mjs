@@ -56,6 +56,7 @@ export const updateFileHelper = async (file, req, res) => {
  * @returns {Promise<void>} A promise that resolves after the files are deleted and the response is sent.
  */
 export const deleteFilesHelper = async (files, req, res) => {
+    const user = await User.findById(req.user.id);
     const deletionResults = [];
 
     try {
@@ -74,6 +75,8 @@ export const deleteFilesHelper = async (files, req, res) => {
             if (exists) {
                 // If the file exists, delete it
                 await bucket.file(filePath).delete();
+                user.files = user.files.filter(f => f.fileName !== fileName);
+                await user.save()
                 deletionResults.push({ fileName, success: true, message: "File deleted successfully" });
             } else {
                 // If the file doesn't exist, add an entry to deletionResults
@@ -103,6 +106,7 @@ export const deleteFilesHelper = async (files, req, res) => {
  * @returns {Promise<void>} A promise that resolves after the files are processed and the response is sent.
  */
 export const uploadFilesHelper = async (uploadedFiles, req, res) => {
+    const user = await User.findById(req.user.id);
     const processedFiles = [];
     const uploadResults = [];
 
@@ -126,9 +130,11 @@ export const uploadFilesHelper = async (uploadedFiles, req, res) => {
                     reject(err);
                 });
 
-                blobStream.on('finish', () => {
+                blobStream.on('finish', async () => {
                     processedFiles.push(originalName);
-                    uploadResults.push({ fileName: originalName, success: true, error: "File uploaded successfully" })
+                    uploadResults.push({ fileName: originalName, success: true, error: "File uploaded successfully" });
+                    user.files.push({ fileName: originalName, fileType: originalName.split('.').pop() });
+                    await user.save();
                     resolve();
                 });
                 blobStream.end(file.buffer);

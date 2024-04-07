@@ -33,8 +33,6 @@ const register = async (req, res) => {
     if (!result.isEmpty()) return res.status(400).json({ success: false, errors: result.array() })
     const data = matchedData(req);
     try {
-
-
         // Hash the password before saving it
         data.password = hashPassword(data.password);
 
@@ -90,7 +88,8 @@ const verify = async (username, password, done) => {
 
         // Compare hashed password with provided password
         if (!bcrypt.compareSync(password, user.password)) return done();
-
+        user.lastLogin = new Date();
+        await user.save();
         // Call done callback with user object if authentication is successful
         done(null, user);
     } catch (error) {

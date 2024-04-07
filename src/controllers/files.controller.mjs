@@ -1,5 +1,6 @@
 import { deleteFilesHelper, updateFileHelper, uploadFilesHelper } from '../helpers/files.helper.mjs';
 import { bucket, upload, uploads } from '../constants/filesConstants.mjs';
+import { redisClient } from '../constants/redisClient.mjs'
 
 /**
  * @description 
@@ -40,9 +41,12 @@ const getFile = async (req, res) => {
             // If 'name' parameter is not provided, list all files belonging to the user
             const [files] = await bucket.getFiles({ prefix: `${req.user.username.toLowerCase()}/` });
             const userFiles = files.map(file => file.name.split('/').pop());
+            const response = { success: true, message: "No name query provided", files: userFiles };
+            redisClient.setEx(`${req.user.id}:${req.method}:${req.baseUrl}`, 60, JSON.stringify(response));
+
 
             // Return list of user's files
-            return res.status(200).json({ success: true, message: "No name query provided", files: userFiles });
+            return res.status(200).json(response);
         }
     } catch (error) {
         console.error('Error retrieving file:', error);

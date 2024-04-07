@@ -62,6 +62,10 @@ const userSchema = new Schema({
     files: {
         type: [fileSchema],
         default: []
+    },
+    lastLogin: {
+        type: Date,
+        default: null
     }
 }, {
     // Enable timestamps for created and updated fields

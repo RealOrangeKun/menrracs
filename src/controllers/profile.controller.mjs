@@ -22,7 +22,7 @@ const getProfile = async (req, res) => {
                 username: user.username, email: user.email, filesUploaded: user.files
             }
         };
-        await redisClient.setEx(`${req.user.id}:${req.method}:${req.baseUrl}`, 1000 * 60 * 15, JSON.stringify(response))
+        await redisClient.setEx(`${req.user.id}:${req.method}:${req.baseUrl}`, 60 * 15, JSON.stringify(response))
         res.status(200).json(response);
     } catch (error) {
         console.log(error);
