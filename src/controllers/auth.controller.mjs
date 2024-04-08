@@ -7,6 +7,8 @@ import hashPassword from '../helpers/crypt.mjs';
 
 // Import the bcrypt library for password hashing
 import bcrypt from 'bcrypt';
+import { sendEmail } from "../helpers/sendMail.mjs";
+import { redisClient } from '../constants/redisClient.mjs'
 
 /**
  * 
@@ -21,7 +23,7 @@ import bcrypt from 'bcrypt';
  * 
  * Function then adds the new user to the Database and sends a status of `201` with a json of to tell the user that the process was successfull.
  * @async
- * @param {import('express').Request} data - Express Request object.
+ * @param {import('express').Request} req - Express Request object.
  * @param {import('express').Response} res - Express response object.
  * @returns {Object} Success or error response.
  */
@@ -41,7 +43,9 @@ const register = async (req, res) => {
 
         // Create a new user and save to database
         const user = await User.create(data);
-        return res.status(201).json({ success: true, message: "User registered successfully" });
+        await sendEmail(data.email, process.env.MAIL_PASS, `Click this link to verify your account: https://${req.hostname}${req.baseUrl}/verifyEmail?token=${user.token}`,
+            "Verify Account")
+        return res.status(201).json({ success: true, message: "User registered successfully. Please look into your email to verify." });
     } catch (error) {
         // Return error response if registration fails
         res.status(400).send({ success: false, message: error.message });
@@ -88,6 +92,7 @@ const verify = async (username, password, done) => {
 
         // Compare hashed password with provided password
         if (!bcrypt.compareSync(password, user.password)) return done();
+        if (!user.verified) return done();
         user.lastLogin = new Date();
         await user.save();
         // Call done callback with user object if authentication is successful
@@ -97,6 +102,24 @@ const verify = async (username, password, done) => {
         done(error.message);
     }
 };
+/**
+ * @description 
+ * 
+ * 
+ * 
+ * @param {import('express').Request} req 
+ * @param {import('express').Response} res 
+
+ */
+const verifyEmail = async (req, res) => {
+    const user = await User.findOne({ token: req.query.token });
+    if (!user) return res.status(403).json({ success: false, error: "Link expired or not authorized" });
+    user.verified = true;
+    user.token = null;
+    await user.save();
+    return res.status(200).json({ success: true, message: "Email verified" });
+}
+
 
 /**
  * @description Middleware to check if the user is logged in or not
@@ -168,7 +191,8 @@ const loggedIn = (req, res, next) => {
  * @param {import('express').Response} res 
  */
 const incorrectCredentials = (req, res) => {
-    res.status(401).json({ success: false, error: "Incorrect username or password" })
+    res.status(401).json({ success: false, error: "Please make sure you are verified and check your username and password." })
 }
+
 // Export the functions for use in other modules
-export { register, login, verify, checkLoggedIn, logout, loggedIn, incorrectCredentials };
+export { register, login, verify, checkLoggedIn, logout, loggedIn, incorrectCredentials, verifyEmail };

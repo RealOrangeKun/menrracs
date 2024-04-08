@@ -1,6 +1,8 @@
 // Import necessary modules from mongoose
 import { model, Schema } from 'mongoose';
 import { fileSchema } from './file.schema.mjs';
+import bcrypt from 'bcrypt';
+
 
 
 // Define the schema for the user collection
@@ -66,6 +68,14 @@ const userSchema = new Schema({
     lastLogin: {
         type: Date,
         default: null
+    },
+    verified: {
+        type: Boolean,
+        default: false
+    },
+    token: {
+        type: String,
+        default: crypto.randomUUID().toString('hex')
     }
 }, {
     // Enable timestamps for created and updated fields

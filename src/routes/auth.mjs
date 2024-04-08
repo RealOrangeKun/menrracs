@@ -11,7 +11,7 @@ import passport from "passport";
 import '../strategies/local-strategy.mjs';
 
 // Import authentication controller functions
-import { register, login, checkLoggedIn, logout, incorrectCredentials } from "../controllers/auth.controller.mjs";
+import { register, login, checkLoggedIn, logout, incorrectCredentials, verifyEmail } from "../controllers/auth.controller.mjs";
 import { checkSchema } from "express-validator";
 import { createUserValidationSchema } from "../constants/validationSchema.mjs";
 
@@ -23,7 +23,7 @@ router.use(express.json());
 
 // Route for user login
 router.post('/login', checkLoggedIn, passport.authenticate('local', {
-    failureRedirect: '/api/auth/error'
+    failureRedirect: '/api/v1/auth/error'
 }), login);
 
 // Route for user registration
@@ -34,6 +34,9 @@ router.post('/logout', logout);
 
 //Router for error if user not in Database
 router.get('/error', incorrectCredentials)
+
+router.get('/verifyEmail', verifyEmail)
+
 
 // Export the router
 export default router;

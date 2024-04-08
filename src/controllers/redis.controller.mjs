@@ -17,7 +17,6 @@ export const redisMiddleware = async (req, res, next) => {
         const cache = await redisClient.get(`${req.user.id}:${req.method}:${req.path}`);
         cache ? res.status(200).json(JSON.parse(cache)) : next();
     } catch (error) {
-        console.error(error.message);
         next();
     }
 

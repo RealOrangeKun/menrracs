@@ -2,12 +2,12 @@ import cron from 'node-cron';
 import User from "../models/user.schema.mjs";
 import mongoose from 'mongoose';
 import { bucket } from '../constants/filesConstants.mjs';
-import { sendDeletionEmail } from '../controllers/sendMail.mjs';
+import { sendEmail } from '../helpers/sendMail.mjs';
 
 
 const cleanUnactiveUsers = async () => {
     try {
-        const inactiveTime = 6 * 30 * 24 * 60 * 60 * 1000;
+        const inactiveTime = 6 * 30 * 24 * 60 * 60 * 1000; // 6 Months
         const inactiveUsers = await User.find({ lastLogin: { $lt: new Date(Date.now() - inactiveTime) } });
         const sessionsCollection = mongoose.connection.collection('sessions');
         const sessions = await sessionsCollection.find().toArray();
@@ -28,10 +28,11 @@ const cleanUnactiveUsers = async () => {
 
 const notifyUser = async () => {
     try {
-        const inactiveTime = 14369280000;
+        const inactiveTime = 14369280000; // 5 Months and 2 Weeks
         const inactiveUsers = await User.find({ lastLogin: { $lt: new Date(Date.now() - inactiveTime) } });
         inactiveUsers.forEach(async user => {
-            await sendDeletionEmail(user.email, process.env.MAIL_PASS);
+            await sendEmail(user.email, process.env.MAIL_PASS, "Your account hasn't been logged into for almost a year now and will be deleted after 2 weeks. " +
+                "If you dont want it to be deleted please login in to your account.", 'Inactive Account Removal');
         })
     } catch (error) {
         console.error(error.message);

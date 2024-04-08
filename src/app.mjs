@@ -75,7 +75,7 @@ mongoose.connect(process.env.DB || 'mongodb://localhost:27017/menracs')
         }, app)
         // Start HTTPS server
         startCronJobs();
-        sslServer.listen(process.env.PORT || 5000, () => console.log('Listening on port ' + process.env.PORT || 5000))
+        sslServer.listen(process.env.PORT || 5000, () => console.log('Listening on port ' + process.env.PORT || 5000));
     })
     .catch(err => console.log(err.message));
 

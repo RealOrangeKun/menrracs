@@ -2,20 +2,19 @@ import nodemailer from 'nodemailer'
 
 
 
-export const sendDeletionEmail = async (userEmail, pass) => {
+export const sendEmail = async (userEmail, pass, text, subject) => {
     const transport = nodemailer.createTransport({
         service: 'gmail',
         auth: {
             user: 'menrracs.noreply@gmail.com',
-            pass: pass
+            pass
         }
     })
     const options = {
         from: 'menrracs.noreply@gmail.com',
         to: userEmail,
-        subject: 'Inactive Removal',
-        text: "Your account hasn't been logged into for almost a year now and will be deleted after 2 weeks. " +
-            "If you dont want it to be deleted please login in to your account."
+        subject: subject,
+        text
     }
     try {
         const info = await transport.sendMail(options);
