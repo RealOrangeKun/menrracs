@@ -21,6 +21,8 @@ import { redisClient } from '../constants/redisClient.mjs'
  * 
  * Then checks if the username or email already exists in the Database and if it does then it throws an error if not then it continues.
  * 
+ * Function then sends a verification link to the user so they can verify their email.
+ * 
  * Function then adds the new user to the Database and sends a status of `201` with a json of to tell the user that the process was successfull.
  * @async
  * @param {import('express').Request} req - Express Request object.
@@ -43,7 +45,7 @@ const register = async (req, res) => {
 
         // Create a new user and save to database
         const user = await User.create(data);
-        await sendEmail(data.email, process.env.MAIL_PASS, `Click this link to verify your account: https://${req.hostname}${req.baseUrl}/verifyEmail?token=${user.token}`,
+        await sendEmail(data.email, process.env.MAIL_PASS, `Click this link to verify your account: https://${req.hostname}${req.baseUrl}/email-verification?token=${user.token}`,
             "Verify Account")
         return res.status(201).json({ success: true, message: "User registered successfully. Please look into your email to verify." });
     } catch (error) {
@@ -104,8 +106,12 @@ const verify = async (username, password, done) => {
 };
 /**
  * @description 
+ * The function to mark the user as verified
  * 
+ * Function tries to find the user by their token if it doesn't find the user then the user is
+ * already verified or the link expired.
  * 
+ * If it finds the user it sets their token to null and the verified to true.
  * 
  * @param {import('express').Request} req 
  * @param {import('express').Response} res 
@@ -113,7 +119,7 @@ const verify = async (username, password, done) => {
  */
 const verifyEmail = async (req, res) => {
     const user = await User.findOne({ token: req.query.token });
-    if (!user) return res.status(403).json({ success: false, error: "Link expired or not authorized" });
+    if (!user) return res.status(403).json({ success: false, error: "Already verified or not authorized" });
     user.verified = true;
     user.token = null;
     await user.save();

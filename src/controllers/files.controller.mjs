@@ -1,6 +1,9 @@
 import { deleteFilesHelper, updateFileHelper, uploadFilesHelper } from '../helpers/files.helper.mjs';
 import { bucket, upload, uploads } from '../constants/filesConstants.mjs';
 import { redisClient } from '../constants/redisClient.mjs'
+import fs from 'fs'
+import path from 'path';
+import mime from 'mime-types'
 
 /**
  * @description 
@@ -28,11 +31,34 @@ const getFile = async (req, res) => {
             const [exists] = await bucket.file(filePath).exists();
 
             if (exists) {
-                // Get a signed URL for the file to allow downloading
-                const [signedUrl] = await bucket.file(filePath).getSignedUrl({ action: 'read', expires: '01-01-2100' });
+                // Set response headers
+                res.setHeader('Content-Type', mime.contentType(file));
+                res.setHeader('Content-disposition', `attachment; filename=${file}`);
 
-                // Redirect the client to the signed URL to download the file
-                return res.redirect(signedUrl);
+                // Get the file data from Google cloud
+                const [fileData] = await bucket.file(filePath).download();
+
+                // Define the path for the file
+                const tempPath = path.join(process.cwd(), 'temp', file);
+
+                // Write the file in the temp folder
+                fs.writeFileSync(tempPath, fileData, (err) => {
+                    if (err)
+                        throw err;
+                });
+
+                // Get the file size to set the response header
+                fs.statSync(tempPath, (err, stats) => {
+                    if (err) throw err;
+                    res.setHeader('Content-Length', stats.size)
+                })
+
+                // Download the file from the temp folder then delete it from the folder
+                return res.download(tempPath, async (err) => {
+                    fs.unlinkSync(tempPath, (err) => { if (err) console.log(err); })
+                    if (err)
+                        throw err;
+                });
             } else {
                 // Return 404 if file not found
                 return res.status(404).json({ success: false, error: "File not found" });
@@ -49,7 +75,7 @@ const getFile = async (req, res) => {
             return res.status(200).json(response);
         }
     } catch (error) {
-        console.error('Error retrieving file:', error);
+        console.error(error);
         return res.status(500).json({ success: false, error: "Internal Server Error" });
     }
 }
@@ -60,7 +86,7 @@ const getFile = async (req, res) => {
  * 
  * Processes the uploaded files, renames them, saves metadata to the user's document,
  * 
- * and moves them to a designated directory ('processed').
+ * and moves them to a designated directory (<username>/<filename>).
  * 
  * @param {import('express').Request} req - The Express request object.
  * @param {import('express').Response} res - The Express response object.
@@ -84,7 +110,7 @@ const uploadFiles = async (req, res) => {
  * @description 
  * Function to delete one or more files. 
  * 
- * Deletes files from the `'processed'` directory and removes corresponding metadata from the user's document.
+ * Deletes files from the `<username>/` directory and removes corresponding metadata from the user's document.
  * 
  * @param {import('express').Request} req - The Express request object.
  * @param {import('express').Response} res - The Express response object.
@@ -157,6 +183,17 @@ const multerMiddleWareSingle = (req, res, next) => {
     });
 
 }
+/**
+ * @description Middleware for handling file uploads using Multer.
+ * 
+ * This middleware function wraps around Multer's upload function to handle file uploads.
+ * It checks for any errors that occur during the upload process and sends an appropriate
+ * response if an error is encountered.
+ * 
+ * @param {import('express').Request} req - The Express request object.
+ * @param {import('express').Response} res - The Express response object.
+ * @param {Function} next - The next middleware function in the request-response cycle.
+ */
 const multerMiddleWareMultiple = (req, res, next) => {
     uploads(req, res, (err) => {
         // Handling errors during file upload

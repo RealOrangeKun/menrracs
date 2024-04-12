@@ -12,7 +12,11 @@ import '../strategies/local-strategy.mjs';
 
 // Import authentication controller functions
 import { register, login, checkLoggedIn, logout, incorrectCredentials, verifyEmail } from "../controllers/auth.controller.mjs";
+
+// Import the checkschema function from express-validator to validate user input
 import { checkSchema } from "express-validator";
+
+// Import createUserValidationSchema to have the schema which is passed to checkSchema
 import { createUserValidationSchema } from "../constants/validationSchema.mjs";
 
 // Create a new router instance
@@ -35,7 +39,8 @@ router.post('/logout', logout);
 //Router for error if user not in Database
 router.get('/error', incorrectCredentials)
 
-router.get('/verifyEmail', verifyEmail)
+// Route for verifying the user email
+router.get('/email-verification', verifyEmail)
 
 
 // Export the router

@@ -1,4 +1,6 @@
+// Multer module to handle the file uploads
 import multer from 'multer';
+// Storage object to access the google cloud storage
 import { Storage } from '@google-cloud/storage';
 
 
@@ -15,7 +17,7 @@ export const upload = multer({
         fileSize: 1024 * 1024 * 200
     }
 }).single('file');
-
+// Set up the bucket for storing the files
 export const bucket = storage.bucket('menracs-storage-1')
 // Set up multer middleware for multiple file upload
 export const uploads = multer({

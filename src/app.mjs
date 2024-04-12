@@ -6,8 +6,6 @@
 // Express.js framework for building web applications
 import express from "express";
 
-// HTTPS module for creating HTTPS servers
-import https from 'https';
 
 // Load environment variables from .env file
 import { config } from "dotenv";
@@ -34,7 +32,8 @@ import { readFileSync } from "fs";
 // rateLimit to rate limit the requests
 import { rateLimit } from 'express-rate-limit'
 
-import { startCronJobs } from "./cron tasks/inactiveUsersCleanup.task.mjs";
+// startCronJobs to start the scheduled jobs
+import { startCronJobs } from "./tasks/inactiveUsersCleanup.task.mjs";
 
 // Router for authentication routes
 import authRouter from './routes/auth.mjs';
@@ -67,15 +66,8 @@ mongoose.connect(process.env.DB || 'mongodb://localhost:27017/menracs')
     .then(async () => {
         console.log("Connected to DB!");
         await redisClient.connect();
-        // Create HTTPS server
-        const sslServer = https.createServer({
-            // Read SSL certificate key and certificate files
-            key: readFileSync(process.env.KEY_PATH),
-            cert: readFileSync(process.env.CERT_PATH)
-        }, app)
-        // Start HTTPS server
         startCronJobs();
-        sslServer.listen(process.env.PORT || 5000, () => console.log('Listening on port ' + process.env.PORT || 5000));
+        app.listen(process.env.PORT || 5000, () => console.log('Listening on port ' + process.env.PORT || 5000));
     })
     .catch(err => console.log(err.message));
 
@@ -125,14 +117,16 @@ app.use(redisMiddleware);
 
 
 
-// Mount authentication router at /api/auth
+// Mount authentication router at /api/v1/auth
 app.use('/api/v1/auth', authRouter);
 
-// Mount file handling router at /api/files
+// Mount file handling router at /api/v1/files
 app.use('/api/v1/files', loggedIn, filesRouter)
 
+// Mount the profile router at /api/v1/profile
 app.use('/api/v1/profile', loggedIn, profileRouter)
 
+// To handle all 404 not found
 app.all('*', (req, res) => {
     return res.status(404).send("This endpoint doesn't exist")
 })

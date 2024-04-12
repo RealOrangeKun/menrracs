@@ -15,7 +15,7 @@ import { bucket } from '../constants/filesConstants.mjs';
  */
 export const updateFileHelper = async (file, req, res) => {
     try {
-        // Generate a neyw file name and construct the file path in the bucket
+        // Generate a new file name and construct the file path in the bucket
         const originalName = file.originalname;
         const newPath = `${req.user.username.toLowerCase()}/${originalName}`;
 

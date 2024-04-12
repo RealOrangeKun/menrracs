@@ -1,10 +1,21 @@
+// Import cron to create the tasks
 import cron from 'node-cron';
+// Import User to edit the User collection
 import User from "../models/user.schema.mjs";
+// Import mongoose to connect to db
 import mongoose from 'mongoose';
+// Import the google cloud storage bucker
 import { bucket } from '../constants/filesConstants.mjs';
+// Import the sendEmail func to send emails to users
 import { sendEmail } from '../helpers/sendMail.mjs';
 
-
+/**
+ * @description
+ * The function responsible for cleaning the inactive users.
+ * 
+ * Function loops through the users in mongodb and finds one with a
+ * last login from 6 months ago and deletes them.
+ */
 const cleanUnactiveUsers = async () => {
     try {
         const inactiveTime = 6 * 30 * 24 * 60 * 60 * 1000; // 6 Months
@@ -25,7 +36,14 @@ const cleanUnactiveUsers = async () => {
         console.error(error.message);
     }
 }
-
+/**
+ * @description
+ * The function responsible for emailing users about the
+ * account deletion.
+ * 
+ * Function loops through the users in mongodb and finds one with a
+ * last login from 5 months and 2 weeks ago and emails them.
+ */
 const notifyUser = async () => {
     try {
         const inactiveTime = 14369280000; // 5 Months and 2 Weeks
