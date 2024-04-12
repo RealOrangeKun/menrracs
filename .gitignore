@@ -33,3 +33,4 @@ converted/
 
 gcsKey.json
 *.rdb
+temp/

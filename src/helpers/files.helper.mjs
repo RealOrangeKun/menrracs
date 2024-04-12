@@ -15,26 +15,28 @@ import { bucket } from '../constants/filesConstants.mjs';
  */
 export const updateFileHelper = async (file, req, res) => {
     try {
-        // Generate a new file name and construct the file path in the bucket
+        // Get the original name of the path
         const originalName = file.originalname;
+        // Generate a new path in the cloud storage for the file `
         const newPath = `${req.user.username.toLowerCase()}/${originalName}`;
-
+        // Get the 'exists' from the array to check if the file already exists
         const [exists] = await bucket.file(newPath).exists();
-
+        // If it doesn't exist then return not found
         if (!exists) {
             return res.status(404).json({ success: false, error: "File not found" });
         }
-
+        // Update the file
         await bucket.file(newPath).move(newPath);
-
+        // Get the user
         const user = await User.findById(req.user.id);
+        // Get the user's file data
         const fileData = user.files.find(f => f.fileName === originalName);
+        // Update the file last updated at date
         if (fileData) {
-            fileData.fileName = newFileName;
             fileData.updatedAt = new Date();
             await user.save();
         }
-
+        // Return code 200 OK
         return res.status(200).json({ success: true, message: "File updated successfully" });
     } catch (error) {
         console.error('Error updating file:', error);
@@ -75,6 +77,7 @@ export const deleteFilesHelper = async (files, req, res) => {
             if (exists) {
                 // If the file exists, delete it
                 await bucket.file(filePath).delete();
+                // Update the files array in the db
                 user.files = user.files.filter(f => f.fileName !== fileName);
                 await user.save()
                 deletionResults.push({ fileName, success: true, message: "File deleted successfully" });
@@ -106,8 +109,11 @@ export const deleteFilesHelper = async (files, req, res) => {
  * @returns {Promise<void>} A promise that resolves after the files are processed and the response is sent.
  */
 export const uploadFilesHelper = async (uploadedFiles, req, res) => {
+    // Get the user
     const user = await User.findById(req.user.id);
+    // Create an array for the files successfully uploaded
     const processedFiles = [];
+    // The upload results array
     const uploadResults = [];
 
     // Iterating through uploaded files
@@ -115,15 +121,19 @@ export const uploadFilesHelper = async (uploadedFiles, req, res) => {
         try {
             // Extracting file details
             const originalName = file.originalname;
+            // The path for the uploaded files in the cloud storage
             const newPath = `${req.user.username.toLowerCase()}/${originalName}`;
+            // Create a blob
             const blob = bucket.file(newPath);
+            // Check if the file already exists
             const [exists] = await blob.exists();
             if (exists) {
                 uploadResults.push({ fileName: originalName, success: false, error: "File already exists" })
                 continue;
             }
+            // Create the write stream to the google cloud
             const blobStream = blob.createWriteStream();
-
+            // Await a new promise that resolves if the blobStream finishes with no error
             await new Promise((resolve, reject) => {
                 blobStream.on('error', (err) => {
                     uploadResults.push({ fileName: originalName, success: false, error: err.message })

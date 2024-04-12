@@ -1,7 +1,6 @@
 // Import necessary modules from mongoose
 import { model, Schema } from 'mongoose';
 import { fileSchema } from './file.schema.mjs';
-import bcrypt from 'bcrypt';
 
 
 
