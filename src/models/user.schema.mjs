@@ -60,18 +60,22 @@ const userSchema = new Schema({
             message: 'Password must contain at least one uppercase letter, one lowercase letter, and one number.'
         }
     },
+    // An array containing information about every file the user has on the cloud 
     files: {
         type: [fileSchema],
         default: []
     },
+    // Last login date of the user
     lastLogin: {
         type: Date,
         default: null
     },
+    // Boolean value whether the user verified their email or not
     verified: {
         type: Boolean,
         default: false
     },
+    // The user verification token
     token: {
         type: String,
         default: crypto.randomUUID().toString('hex')

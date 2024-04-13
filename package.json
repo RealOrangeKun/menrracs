@@ -1,8 +1,8 @@
 {
-  "name": "menracs",
+  "name": "menrracs",
   "version": "1.0.0",
-  "description": "menracs api for file cloud storage and conversions",
-  "main": "app.js",
+  "description": "menracs api for file cloud storage",
+  "main": "app.mjs",
   "scripts": {
     "test": "jest",
     "dev": "nodemon src/app.mjs",

@@ -8,7 +8,6 @@ import hashPassword from '../helpers/crypt.mjs';
 // Import the bcrypt library for password hashing
 import bcrypt from 'bcrypt';
 import { sendEmail } from "../helpers/sendMail.mjs";
-import { redisClient } from '../constants/redisClient.mjs'
 
 /**
  * 

@@ -2,6 +2,7 @@ import { matchedData, validationResult } from 'express-validator';
 import User from '../models/user.schema.mjs';
 import hashPassword from '../helpers/crypt.mjs';
 import { redisClient } from '../constants/redisClient.mjs';
+import { sendEmail } from '../helpers/sendMail.mjs';
 
 /**
  * @description 
@@ -64,8 +65,22 @@ const updateProfile = async (req, res) => {
         }
         // Check for an email
         if (data.email) {
-            await User.updateOne({ _id: req.user.id }, { $set: { email: data.email } })
+            const user = await User.findById(req.user.id);
+            user.email = data.email;
+            user.verified = false;
+            user.token = crypto.randomUUID().toString('hex');
+            await user.save();
+            await sendEmail(data.email, process.env.MAIL_PASS, `Click this link to verify your account: https://${req.hostname}${req.baseUrl}/email-verification?token=${user.token}`,
+                "Verify Account")
             req.user.email = data.email;
+            req.logout(err => {
+                if (err) {
+                    // Return server error response if logout fails
+                    return res.sendStatus(500);
+                }
+                // Destroy session and return success response if logout is successful
+                req.session.destroy(err => { if (err) console.log(err.message); })
+            })
         }
         res.status(200).json({ success: true, message: "Profile updated successfully" })
     } catch (error) {
