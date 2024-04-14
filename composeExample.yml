@@ -1,0 +1,25 @@
+version: "3.8"
+services:
+  api:
+    build: ./
+    ports:
+      - 80:80
+    environment:
+      - PORT=80
+      - DB=mongodb://localhost:27017/api
+      - SECRET_KEY=123456789abdefghijklmopqrtuvwxyz
+      - PROJECT_ID=api
+      - PATH_GC=path/to/config/config.json
+      - REDIS=redis://localhost:6379
+      - MAIL_PASS=abcd efgh hijk lmno
+      - REDIS_PASS=123456789redispass
+      - ENV=prod
+    develop:
+      watch:
+        - path: ./package.json
+          action: rebuild
+        - path: ./package-lock.json
+          action: rebuild
+        - path: ./src
+          target: /app/src
+          action: sync
