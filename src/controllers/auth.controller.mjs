@@ -44,7 +44,7 @@ const register = async (req, res) => {
 
         // Create a new user and save to database
         const user = await User.create(data);
-        await sendEmail(data.email, process.env.MAIL_PASS, `Click this link to verify your account: https://${req.hostname}${req.baseUrl}/email-verification?token=${user.token}`,
+        await sendEmail(data.email, process.env.MAIL_PASS, `Click this link to verify your account: ${req.protocol}://${req.hostname}${req.baseUrl}/email-verification?token=${user.token}`,
             "Verify Account")
         return res.status(201).json({ success: true, message: "User registered successfully. Please look into your email to verify." });
     } catch (error) {

@@ -25,8 +25,6 @@ import mongoose from "mongoose";
 // Parse cookies in request headers
 import cookieParser from "cookie-parser";
 
-// File system module for reading files
-import { readFileSync } from "fs";
 
 
 // rateLimit to rate limit the requests
@@ -62,7 +60,7 @@ const limiter = rateLimit({
 });
 
 // Connect to MongoDB database
-mongoose.connect(process.env.DB || 'mongodb://localhost:27017/menracs')
+mongoose.connect(process.env.DB)
     .then(async () => {
         console.log("Connected to DB!");
         await redisClient.connect();

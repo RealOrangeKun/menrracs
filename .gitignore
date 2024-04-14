@@ -34,3 +34,4 @@ converted/
 gcsKey.json
 *.rdb
 temp/
+compose.yml
