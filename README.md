@@ -38,11 +38,11 @@
         1. `username` The username the user wants to have (3 Character min length).
         2. `password` The password the user wants (8 characters min with one lowercase and one uppercase).
         3. `email` The email the user wants to have.
-    - `api/v1/auth/login`
+   - `api/v1/auth/login`
         This route takes a json object in it's body with the propeties:
           1. `username` The user's username.
           2. `password` The user's password.
-    - `api/v1/auth/logout`
+   - `api/v1/auth/logout`
         This route doesn't take any params.
    - `/api/v1/files`
       - **POST** Form data with the key's name as `files` and the value as the file/files itself.
@@ -88,4 +88,4 @@
    The API uses `passport.js` [local-strategy](https://www.passportjs.org/packages/passport-local/) to verify the user with their username and password.
 
 ## License
-    This project uses the [Apache License Version 2.0, January 2004](LICENSE)
+  This project uses the [Apache License Version 2.0, January 2004](LICENSE)
