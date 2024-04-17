@@ -1,10 +1,10 @@
 import Footer from './Footer.tsx'
-import Card from './Card.tsx'
+import LoginCard from './LoginCard.tsx'
 
 function App() {
   return(
     <>
-    <Card/>
+    <LoginCard/>
     <Footer/> 
     </>
   );
