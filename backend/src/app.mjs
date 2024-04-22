@@ -24,6 +24,8 @@ import mongoose from "mongoose";
 
 // Parse cookies in request headers
 import cookieParser from "cookie-parser";
+
+// Cors
 import cors from "cors"
 
 
@@ -117,7 +119,8 @@ app.use(redisMiddleware);
 
 // Setting up cors
 app.use(cors({
-    origin: "*"
+    origin: "*",
+    credentials: true,
 }))
 
 
