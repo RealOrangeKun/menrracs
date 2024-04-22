@@ -119,8 +119,7 @@ app.use(redisMiddleware);
 
 // Setting up cors
 app.use(cors({
-    origin: "*",
-    credentials: true,
+    origin: "*"
 }))
 
 
