@@ -66,7 +66,7 @@ const register = async (req, res) => {
  */
 const login = async (req, res) => {
     // Return success response for login
-    res.status(200).json({ success: true, message: 'Logged in' });
+    res.status(200).json({ success: true, message: 'Logged in', token: `${req.sessionID}` });
 };
 
 /**
