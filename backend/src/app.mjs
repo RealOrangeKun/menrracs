@@ -24,6 +24,7 @@ import mongoose from "mongoose";
 
 // Parse cookies in request headers
 import cookieParser from "cookie-parser";
+import cors from "cors"
 
 
 
@@ -113,6 +114,11 @@ app.use(passport.session());
 
 // Middleware to store cache for repeated requests
 app.use(redisMiddleware);
+
+// Setting up cors
+app.use(cors({
+    origin: "*"
+}))
 
 
 
