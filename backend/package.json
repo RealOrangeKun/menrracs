@@ -8,7 +8,8 @@
     "dev": "nodemon src/app.mjs",
     "push-version-minor": "npm version minor & git add -A & git commit & git push",
     "push-version-major": "npm version major & git add -A & git commit & git push",
-    "push": "git add -A & git commit & git push"
+    "push": "git add -A & git commit & git push",
+    "deploy": "npm run push & docker compose build & docker tag menrracs europe-west6-docker.pkg.dev/menracs/menracs/latest & docker push europe-west6-docker.pkg.dev/menracs/menracs/latest"
   },
   "author": "Youssef Tarek",
   "license": "ISC",
