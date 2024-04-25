@@ -121,7 +121,7 @@ app.use(redisMiddleware);
 app.use(cors({
     origin: "*",
     credentials: true,
-    exposedHeaders: ["set-cookie"],
+    exposedHeaders: "*",
 }))
 
 
