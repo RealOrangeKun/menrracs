@@ -3,6 +3,10 @@ import LoginCard from './LoginCard.tsx'
 import SignUpCard from './SignUpCard.tsx'
 import Header from './Header.tsx'
 import NotFound from './notFound.tsx'
+import HomePage from './homePage.tsx'
+import Files from './files.tsx'
+import About from './About.tsx'
+import Contact from './Contact.tsx'
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import {CookiesProvider} from "react-cookie"; 
 function App() {
@@ -29,6 +33,30 @@ function App() {
             <>
             <Header/>
             <NotFound />
+            </>}
+          />
+           <Route path="/homePage" element={
+            <>
+            <Header/>
+            <HomePage />
+            </>}
+          />
+           <Route path="/files" element={
+            <>
+            <Header/>
+            <Files />
+            </>}
+          />
+           <Route path="/about" element={
+            <>
+            <Header/>
+            <About />
+            </>}
+          />
+           <Route path="/contact" element={
+            <>
+            <Header/>
+            <Contact />
             </>}
           />
       </Routes>
