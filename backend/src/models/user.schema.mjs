@@ -74,11 +74,6 @@ const userSchema = new Schema({
     verified: {
         type: Boolean,
         default: false
-    },
-    // The user verification token
-    token: {
-        type: String,
-        default: crypto.randomUUID().toString('hex')
     }
 }, {
     // Enable timestamps for created and updated fields

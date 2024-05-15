@@ -17,7 +17,7 @@ import { sendEmail } from '../helpers/sendMail.mjs';
  */
 const getProfile = async (req, res) => {
     try {
-        const user = await User.findById({ _id: req.user.id });
+        const user = await User.findById(req.user.id);
         const response = {
             success: true, data: {
                 username: user.username, email: user.email, filesUploaded: user.files

@@ -8,16 +8,18 @@ import express from 'express';
 import passport from "passport";
 
 // Import local authentication strategy
-import '../strategies/local-strategy.mjs';
+import '../auth/local-strategy.mjs';
 
 // Import authentication controller functions
-import { register, login, checkLoggedIn, logout, incorrectCredentials, verifyEmail } from "../controllers/auth.controller.mjs";
+import { register, login, logout, incorrectCredentials, verifyEmail } from "../controllers/auth.controller.mjs";
 
 // Import the checkschema function from express-validator to validate user input
 import { checkSchema } from "express-validator";
 
 // Import createUserValidationSchema to have the schema which is passed to checkSchema
 import { createUserValidationSchema } from "../constants/validationSchema.mjs";
+import { generateAccessToken, generateRefreshToken, verifyFromDatabase } from "../helpers/token.helper.mjs";
+import { tokenTypes } from "../constants/tokenConstants.mjs";
 
 // Create a new router instance
 const router = Router();
@@ -26,9 +28,7 @@ const router = Router();
 router.use(express.json());
 
 // Route for user login
-router.post('/login', checkLoggedIn, passport.authenticate('local', {
-    failureRedirect: '/api/v1/auth/error'
-}), login);
+router.post('/login', login);
 
 // Route for user registration
 router.post('/register', checkSchema(createUserValidationSchema), register);
@@ -41,6 +41,16 @@ router.get('/error', incorrectCredentials)
 
 // Route for verifying the user email
 router.get('/email-verification', verifyEmail)
+
+router.post('/refresh-token', async (req, res) => {
+    const oldRefresh = req.cookies.jwt;
+    const { user } = await verifyFromDatabase(oldRefresh, tokenTypes.EMAIL);
+    const newRefresh = await generateRefreshToken(user);
+    const newAccess = generateAccessToken(user);
+    res.cookie('jwt', newRefresh.token, { httpOnly: true, secure: true, sameSite: 'strict', maxAge: refresh.expires });
+    // Return success response for login
+    res.status(200).json({ success: true, message: 'Logged in', token: newAccess });
+});
 
 
 // Export the router

@@ -10,9 +10,6 @@ import express from "express";
 // Load environment variables from .env file
 import { config } from "dotenv";
 
-// Session middleware for Express
-import session from "express-session";
-
 // Passport.js for authentication
 import passport from "passport";
 
@@ -87,32 +84,8 @@ app.use(express.urlencoded({ extended: true }))
 // Middleware to parse cookies
 app.use(cookieParser(process.env.SECRET_KEY));
 
-
-// Configure session middleware
-app.use(session({
-    // Secret used to sign the session ID cookie
-    secret: process.env.SECRET_KEY,
-    // Do not save sessions if they have not been modified
-    resave: false,
-    // Save new sessions that have not been modified
-    saveUninitialized: true,
-    // Session duration in milliseconds (2 Weeks)
-    cookie: {
-        maxAge: 2 * 7 * 24 * 60 * 60 * 1000,
-    },
-    // MongoDB connection client and collection to store sessions
-    store: MongoStore.create({
-        client: mongoose.connection.getClient(),
-        collectionName: 'sessions',
-        touchAfter: 24 * 3600
-    })
-}));
-
 // Initialize Passport.js for authentication
 app.use(passport.initialize());
-
-// Middleware to restore session data
-app.use(passport.session());
 
 // Middleware to store cache for repeated requests
 app.use(redisMiddleware);
@@ -120,8 +93,7 @@ app.use(redisMiddleware);
 // Setting up cors
 app.use(cors({
     origin: "*",
-    credentials: true,
-    exposedHeaders: "*",
+    credentials: true
 }))
 
 
