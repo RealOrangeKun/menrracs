@@ -26,5 +26,4 @@ export const redisMiddleware = async (req, res, next) => {
     } catch (error) {
         next();
     }
-
 }

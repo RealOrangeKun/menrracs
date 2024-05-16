@@ -152,15 +152,8 @@ const verifyEmail = async (req, res) => {
  */
 const logout = (req, res) => {
     // Check if user is logged in
-    req.user ? req.logout(err => {
-        if (err) {
-            // Return server error response if logout fails
-            return res.sendStatus(500);
-        }
-        // Destroy session and return success response if logout is successful
-        req.session.destroy(err => err ? res.status(500).json({ success: false, error: 'Failed to logout due to server error' }) :
-            res.status(200).json({ success: true, message: "User logged out successfully" }))
-    }) : res.status(401).json({ success: false, error: "User not logged in" });
+    res.clearCookie('jwt', { httpOnly: true, secure: true, sameSite: 'strict' });
+    res.sendStatus(204);
 };
 /**
  * @description Logged in function

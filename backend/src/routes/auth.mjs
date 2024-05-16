@@ -11,7 +11,7 @@ import passport from "passport";
 import '../auth/local-strategy.mjs';
 
 // Import authentication controller functions
-import { register, login, logout, incorrectCredentials, verifyEmail } from "../controllers/auth.controller.mjs";
+import { register, login, logout, incorrectCredentials, verifyEmail, loggedIn } from "../controllers/auth.controller.mjs";
 
 // Import the checkschema function from express-validator to validate user input
 import { checkSchema } from "express-validator";
@@ -34,7 +34,7 @@ router.post('/login', login);
 router.post('/register', checkSchema(createUserValidationSchema), register);
 
 // Route for user logout
-router.post('/logout', logout);
+router.post('/logout', loggedIn, logout);
 
 //Router for error if user not in Database
 router.get('/error', incorrectCredentials)
@@ -47,9 +47,9 @@ router.post('/refresh-token', async (req, res) => {
     const { user } = await verifyFromDatabase(oldRefresh, tokenTypes.EMAIL);
     const newRefresh = await generateRefreshToken(user);
     const newAccess = generateAccessToken(user);
-    res.cookie('jwt', newRefresh.token, { httpOnly: true, secure: true, sameSite: 'strict', maxAge: refresh.expires });
+    res.cookie('jwt', newRefresh.token, { httpOnly: true, secure: true, sameSite: 'strict', maxAge: newRefresh.expires });
     // Return success response for login
-    res.status(200).json({ success: true, message: 'Logged in', token: newAccess });
+    res.status(200).json({ success: true, message: 'Token Refreshed', token: newAccess });
 });
 
 
