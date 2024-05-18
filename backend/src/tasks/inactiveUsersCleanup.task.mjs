@@ -20,12 +20,7 @@ const cleanUnactiveUsers = async () => {
     try {
         const inactiveTime = 6 * 30 * 24 * 60 * 60 * 1000; // 6 Months
         const inactiveUsers = await User.find({ lastLogin: { $lt: new Date(Date.now() - inactiveTime) } });
-        const sessionsCollection = mongoose.connection.collection('sessions');
-        const sessions = await sessionsCollection.find().toArray();
         inactiveUsers.forEach(async user => {
-            const session = sessions.find(s => JSON.parse(s.session).passport.user === user._id.toString());
-            if (session)
-                sessionsCollection.deleteOne({ _id: session._id })
             await bucket.deleteFiles({
                 prefix: `${user.username.toLowerCase()}`,
                 force: true
