@@ -63,12 +63,13 @@ const limiter = rateLimit({
 // Connect to MongoDB database
 mongoose.connect(process.env.DB)
     .then(async () => {
-        console.log("Connected to DB!");
+        console.log("Connected to DB");
         await redisClient.connect();
+        console.log("Cache connected");
         startCronJobs();
         app.listen(process.env.PORT || 5000, () => console.log('Listening on port ' + process.env.PORT || 5000));
     })
-    .catch(err => console.log(err.message));
+    .catch(err => console.error(err.message));
 
 // Middleware to limit the incoming requests
 app.use(limiter)
