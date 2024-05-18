@@ -78,6 +78,8 @@ const login = async (req, res) => {
     if (!bcrypt.compareSync(password, user.password)) return res.sendStatus(401);
     const access = generateAccessToken(user.id);
     const refresh = await generateRefreshToken(user.id);
+    user.lastLogin = new Date();
+    await user.save();
     res.cookie('jwt', refresh.token, { httpOnly: true, secure: true, sameSite: 'strict', maxAge: refresh.expires });
     // Return success response for login
     res.status(200).json({ success: true, message: 'Logged in', token: access });
